@@ -51,7 +51,6 @@ namespace Herby
 				return new POINT(p.X, p.Y);
 			}
 		}
-		public bool do_the_thing = false;
 
 		static int WM_LBUTTONDOWN = 0x201;	//Left mousebutton down
 		static int WM_LBUTTONUP = 0x202;	//Left mousebutton up
@@ -259,7 +258,7 @@ namespace Herby
 				return;
 			}
 
-			this.cur_best_move = new card_play{moves = new List<string>{""}, score = -9999};
+			this.cur_best_move = new card_play{moves = new List<string>{""}, score = -1000};
 			
 			if (!this.cur_board.game_active)
 			{
@@ -808,7 +807,7 @@ namespace Herby
 				possible_plays = get_possible_plays(new board_state(board));
 			}
 			
-			card_play best_play = new card_play{moves = new List<string>{""}, score = -100};
+			card_play best_play = new card_play{moves = new List<string>{""}, score = -1000};
 
 			max_depth = (int)Math.Ceiling(Math.Log(300/possible_plays.Count(), 2));
 			
@@ -1459,7 +1458,12 @@ namespace Herby
 				}
 				else if (cur_card.zone_name == "FRIENDLY PLAY (Hero)")
 				{
-					if (cur_card.get_cur_health() > 0)
+					if (this.cur_board.check_attack_on_board(true) >= cur_card.get_cur_health() && !board.check_if_taunt_in_play())
+					{
+						//enemy has lethal, mark this kinda low
+						cur_card_value -= 100;
+					}
+					else if (cur_card.get_cur_health() > 0)
 					{
 						cur_card_value += cur_card.get_cur_health() * MY_HERO_WEIGHT;
 					}
@@ -1478,7 +1482,7 @@ namespace Herby
 					}
 				}
 
-				if (this.high_prio_targets.Contains(cur_card.name))
+				if (this.high_prio_targets.Contains(cur_card.name) && cur_card.tags.silenced == false)
 				{
 					//current minion is a high priority target. kill it with extreme prejudice
 					//this forces kills on mal'ganis, among other shit that will 100% make us lose.
