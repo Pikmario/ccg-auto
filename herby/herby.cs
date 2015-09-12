@@ -873,10 +873,10 @@ namespace Herby
 								//DAT IF CHAIN THO
 								foreach (var enemy_card in board.enemy_field_cards.Values)
 								{
-									if (enemy_card.zone_name == "OPPOSING PLAY (Hero)")
+									if (enemy_card.zone_name == "OPPOSING PLAY (Hero)" && enemy_card.tags.immune == false)
 									{
 										//target's the enemy hero, shoot his stupid face
-										possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, enemy_card.local_id, "spell" } });
+										possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, enemy_card.local_id, herby_deck[cur_card.name].type } });
 									}
 								}
 							}
@@ -1449,6 +1449,11 @@ namespace Herby
 					if (cur_card.get_cur_health() > 0)
 					{
 						cur_card_value += cur_card.get_cur_health() * ENEMY_HERO_WEIGHT * -1;
+						if (cur_card.get_cur_health() <= 15)
+						{
+							//enemy hero is getting low on health, rank him increasingly higher
+							cur_card_value += 100 / (Math.Max(1, cur_card.get_cur_health() * 100 / 15));
+						}
 					}
 					else
 					{
@@ -1476,7 +1481,7 @@ namespace Herby
 
 				if (cur_card.zone_name == "FRIENDLY HAND")
 				{
-					if (herby_deck.ContainsKey(cur_card.name))
+					if (herby_deck.ContainsKey(cur_card.name) && board.count_cards_in_hand() < 10)
 					{
 						cur_card_value += herby_deck[cur_card.name].value_in_hand;
 					}
