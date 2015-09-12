@@ -185,6 +185,7 @@ namespace Herby
 					cards[id].tags.frozen = value;
 					break;
 				case "immune":
+				case "cant_be_damaged":
 					cards[id].tags.immune = value;
 					break;
 				case "silenced":
