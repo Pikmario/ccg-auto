@@ -1452,7 +1452,7 @@ namespace Herby
 						if (cur_card.get_cur_health() <= 15)
 						{
 							//enemy hero is getting low on health, rank him increasingly higher
-							cur_card_value += 100 / (Math.Max(1, cur_card.get_cur_health() * 100 / 15));
+							cur_card_value += 300 / (Math.Max(1, cur_card.get_cur_health()));
 						}
 					}
 					else
