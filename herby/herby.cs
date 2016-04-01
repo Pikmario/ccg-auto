@@ -301,7 +301,7 @@ namespace Herby
 				this.is_my_turn = true;
 				return;
 			}
-
+			
 			if (this.my_hand_size != this.cur_board.count_cards_in_hand())
 			{
 				//we just played a card, or drew one, and the numbers don't match up
@@ -973,11 +973,6 @@ namespace Herby
 									}
 								}
 							}
-							else
-							{
-								//simple minion, just toss it in
-								possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, "minion" } });
-							}
 						}
 					}
 					else if (cur_card.card_type == "ABILITY")
@@ -1201,14 +1196,17 @@ namespace Herby
 					{
 						//looking at a card with the same name
 						//now check attack and health
-						if (herby_deck[this_card.name].type == "spell" || herby_deck[this_card.name].type == "secret" || herby_deck[this_card.name].type == "weapon" || (herby_deck[this_card.name].type == "minion" && this_card.atk == compare_card.atk && this_card.get_cur_health() == compare_card.get_cur_health()))
+						if (herby_deck.ContainsKey(this_card.name))
 						{
-							//same health and attack, or we're using a spell/secret/weapon
-							//now check their target
-							if (play.moves[1] == comp_play.moves[1])
+							if (herby_deck[this_card.name].type == "spell" || herby_deck[this_card.name].type == "secret" || herby_deck[this_card.name].type == "weapon" || (herby_deck[this_card.name].type == "minion" && this_card.atk == compare_card.atk && this_card.get_cur_health() == compare_card.get_cur_health()))
 							{
-								//targets are the same, remove the compared play
-								possible_plays.Remove(comp_play);
+								//same health and attack, or we're using a spell/secret/weapon
+								//now check their target
+								if (play.moves[1] == comp_play.moves[1])
+								{
+									//targets are the same, remove the compared play
+									possible_plays.Remove(comp_play);
+								}
 							}
 						}
 					}
