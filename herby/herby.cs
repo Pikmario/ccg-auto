@@ -108,6 +108,8 @@ namespace Herby
 		IntPtr hs;
 		public string my_name = "";
 
+		public string my_controller_value = "";
+
 		public const int move_delay_default = 200;
 
 		public static double MY_MINIONS_WEIGHT;
@@ -573,7 +575,7 @@ namespace Herby
 						}
 						continue;
 					}
-					if (line.Contains("SHOW_ENTITY - Updating"))
+					if (line.Contains("SHOW_ENTITY - Updating") || line.Contains("FULL_ENTITY - Updating"))
 					{
 						//updating a card that was previously created without knowing what it was
 						//for cards that fell into the deck or brand new created cards
@@ -590,6 +592,12 @@ namespace Herby
 						{
 							log_state.change_card_prop(cur_id, "card_uid", card_uid);
 						}
+
+						string card_name = get_card_name(line);
+						if (card_name.Length > 0)
+						{
+							log_state.cards[cur_id].name = card_name;
+						}
 						continue;
 					}
 					if (line.Contains("tag=") && (creating_card || updating_card))
@@ -601,6 +609,11 @@ namespace Herby
 						if (log_state.change_card_prop(cur_id, cur_tag, cur_value) == false)
 						{
 							log_state.change_card_tag(cur_id, cur_tag, cur_value == "1");
+						}
+
+						if (this.my_controller_value == "" && cur_tag == "CONTROLLER" && log_state.cards[cur_id].name != null)
+						{
+							this.my_controller_value = cur_value;
 						}
 						continue;
 					}
@@ -649,13 +662,13 @@ namespace Herby
 						}
 
 						string player_name = get_line_value(line, "Entity");
-						if (log_state.enemy_name == "" && player_name != this.my_name)
-						{
-							log_state.enemy_name = player_name;
-						}
-						else if (log_state.my_name == "" && player_name == this.my_name)
+						if (log_state.my_name == "" && tag == "CONTROLLER" && tag_value == this.my_controller_value)
 						{
 							log_state.my_name = player_name;
+						}
+						else if (log_state.enemy_name == "" && tag == "CONTROLLER" && tag_value != this.my_controller_value)
+						{
+							log_state.enemy_name = player_name;
 						}
 
 						if (tag == "RESOURCES")
@@ -758,6 +771,8 @@ namespace Herby
 						}
 					}
 				}
+
+				Console.WriteLine(log_state.my_name);
 
 				if (this.wipe_log && this.cur_board.game_active == false)
 				{
