@@ -371,11 +371,35 @@ namespace Herby
 						set_action_text("Running best move");
 						run_best_move(best_move);
 						
-						if (best_move.moves.Count() == 3)
+						Console.Write("Best move: ");
+						if (best_move.moves.Count() == 1)
 						{
-							//Console.WriteLine(this.cur_board.cards[best_move.moves[0]].name);
-							//Console.WriteLine(best_move.moves[1]);
-							//Console.WriteLine(this.cur_board.cards[best_move.moves[1]].name);
+							if (this.cur_board.cards.ContainsKey(best_move.moves[0]))
+							{
+								Console.WriteLine(this.cur_board.cards[best_move.moves[0]].name);
+							}
+							else
+							{
+								Console.WriteLine(best_move.moves[0]);
+							}
+						}
+						else if (best_move.moves.Count() == 2)
+						{
+							Console.Write(this.cur_board.cards[best_move.moves[0]].name + " > ");
+							if (this.cur_board.cards.ContainsKey(best_move.moves[1]))
+							{
+								Console.WriteLine(this.cur_board.cards[best_move.moves[1]].name);
+							}
+							else
+							{
+								Console.WriteLine(best_move.moves[1]);
+							}
+						}
+						else if (best_move.moves.Count() == 3)
+						{
+							Console.WriteLine(this.cur_board.cards[best_move.moves[0]].name);
+							Console.WriteLine(best_move.moves[1]);
+							Console.WriteLine(this.cur_board.cards[best_move.moves[1]].name);
 						}
 						
 						//wait a short while for animation to play and interactivity to return
@@ -772,8 +796,6 @@ namespace Herby
 					}
 				}
 
-				Console.WriteLine(log_state.my_name);
-
 				if (this.wipe_log && this.cur_board.game_active == false)
 				{
 					hs_log_file.BaseStream.SetLength(0);
@@ -990,7 +1012,7 @@ namespace Herby
 							}
 						}
 					}
-					else if (cur_card.card_type == "ABILITY")
+					else if (cur_card.card_type == "ABILITY" || cur_card.card_type == "SPELL")
 					{
 						//spell or secret, make sure we have it defined
 						if (herby_deck.ContainsKey(cur_card.name))
@@ -2047,7 +2069,6 @@ namespace Herby
 
 		public void get_config_settings(Dictionary<string, dynamic> config)
 		{
-			this.my_name = config["general"]["player_name"].ToString();
 			this.log_location = config["general"]["log_location"].ToString();
 			this.db_path = config["general"]["dropbox_location"].ToString();
 
