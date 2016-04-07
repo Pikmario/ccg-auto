@@ -500,6 +500,7 @@ namespace Herby
 				this.hs_log_file = new StreamReader(hslog_filestream);
 
 				string modded_log_contents = "";
+				this.my_controller_value = "";
 				
 				board_state log_state = new board_state();
 
