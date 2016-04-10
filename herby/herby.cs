@@ -636,6 +636,11 @@ namespace Herby
 							log_state.change_card_tag(cur_id, cur_tag, cur_value == "1");
 						}
 
+						if (log_state.cards[cur_id].name != "" && herby_deck.ContainsKey(log_state.cards[cur_id].name) && herby_deck[log_state.cards[cur_id].name].family != null)
+						{
+							log_state.cards[cur_id].family = herby_deck[log_state.cards[cur_id].name].family;
+						}
+
 						if (this.my_controller_value == "" && cur_tag == "CONTROLLER" && log_state.cards[cur_id].name != null)
 						{
 							this.my_controller_value = cur_value;

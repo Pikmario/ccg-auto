@@ -197,6 +197,9 @@ namespace Herby
 				case "cant_attack":
 					cards[id].tags.cant_attack = value;
 					break;
+				case "powered_up":
+					cards[id].tags.powered_up = value;
+					break;
 				default:
 					return false;
 			}
@@ -216,6 +219,14 @@ namespace Herby
 			else if (zone_name.Contains("FRIENDLY PLAY"))
 			{
 				this.my_field_cards[card_id] = this.cards[card_id];
+				Dictionary<string, deck_card> herby_deck = build_herby_deck.herby_deck();
+				if (herby_deck.ContainsKey(this.cards[card_id].name))
+				{
+					if (herby_deck[this.cards[card_id].name].gain_aura != null)
+					{
+						herby_deck[this.cards[card_id].name].gain_aura(this.cards[card_id], this);
+					}
+				}
 			}
 			else if (zone_name.Contains("OPPOSING PLAY"))
 			{
@@ -233,6 +244,14 @@ namespace Herby
 			else if (this.cards[card_id].zone_name.Contains("FRIENDLY PLAY"))
 			{
 				this.my_field_cards.Remove(card_id);
+				Dictionary<string, deck_card> herby_deck = build_herby_deck.herby_deck();
+				if (herby_deck.ContainsKey(this.cards[card_id].name))
+				{
+					if (herby_deck[this.cards[card_id].name].lose_aura != null)
+					{
+						herby_deck[this.cards[card_id].name].lose_aura(this.cards[card_id], this);
+					}
+				}
 			}
 			else if (this.cards[card_id].zone_name.Contains("OPPOSING PLAY"))
 			{
@@ -342,7 +361,7 @@ namespace Herby
 		{
 			foreach (var cur_card in this.my_field_cards.Values)
 			{
-				if (Herby.herby_deck.ContainsKey(cur_card.name) && Herby.herby_deck[cur_card.name].family == "beast")
+				if (cur_card.family == "beast")
 				{
 					return true;
 				}

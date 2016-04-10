@@ -1,4 +1,6 @@
-﻿namespace Herby
+﻿using System.Collections.Generic;
+
+namespace Herby
 {
 	public class card
 	{
@@ -15,7 +17,8 @@
 						windfury,
 						silenced,
 						battlecry,
-						cant_attack;
+						cant_attack,
+						powered_up;
 
 			public card_tags(bool nothing = true)
 			{
@@ -31,6 +34,7 @@
 				this.silenced = false;
 				this.battlecry = false;
 				this.cant_attack = false;
+				this.powered_up = false;
 			}
 		}
 
@@ -49,6 +53,8 @@
 
 		public int base_health = -1;	//how much health the minion started with
 		public int base_atk = -1;	//how much attack the minion started with
+
+		public string family = "";
 
 		public string zone_name = "";
 		public string prev_zone_name = "";
@@ -83,6 +89,8 @@
 
 			this.base_health = cloned_card.base_health;
 			this.base_atk = cloned_card.base_atk;
+
+			this.family = cloned_card.family;
 
 			this.zone_name = cloned_card.zone_name;
 			this.prev_zone_name = cloned_card.prev_zone_name;
@@ -131,7 +139,7 @@
 			return this.max_health + this.armor - this.get_damage();
 		}
 
-		public void silence()
+		public void silence(board_state board_state)
 		{
 			this.tags.taunt = false;
 			this.tags.stealth = false;
@@ -142,9 +150,19 @@
 			this.tags.immune = false;
 			this.tags.windfury = false;
 			this.tags.silenced = true;
+			this.tags.cant_attack = false;
 
 			this.max_health = this.base_health;
 			this.atk = this.base_atk;
+
+			Dictionary<string, deck_card> herby_deck = build_herby_deck.herby_deck();
+			if (herby_deck.ContainsKey(this.name))
+			{
+				if (herby_deck[this.name].lose_aura != null)
+				{
+					herby_deck[this.name].lose_aura(this, board_state);
+				}
+			}
 		}
 	}
 }

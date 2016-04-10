@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace Herby
 {
@@ -12,5 +13,7 @@ namespace Herby
 		public Action<card, board_state> inspire;
 		public Action<card, board_state, card> battlecry;
 		public Action<card, board_state, card> effect;
+		public Action<card, board_state> gain_aura;
+		public Action<card, board_state> lose_aura;
 	}
 }
