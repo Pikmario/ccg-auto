@@ -1849,7 +1849,8 @@ namespace Herby
 			{
 				file.Delete();
 			}
-			File.Create(this.db_path + type + "_" + count);
+			
+			File.Create(this.db_path + type + "_" + count).Close();
 
 			this.rand = new Random();
 		}

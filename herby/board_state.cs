@@ -231,6 +231,14 @@ namespace Herby
 			else if (zone_name.Contains("OPPOSING PLAY"))
 			{
 				this.enemy_field_cards[card_id] = this.cards[card_id];
+				Dictionary<string, deck_card> herby_deck = build_herby_deck.herby_deck();
+				if (herby_deck.ContainsKey(this.cards[card_id].name))
+				{
+					if (herby_deck[this.cards[card_id].name].gain_aura != null)
+					{
+						herby_deck[this.cards[card_id].name].gain_aura(this.cards[card_id], this);
+					}
+				}
 			}
 		}
 
@@ -256,6 +264,14 @@ namespace Herby
 			else if (this.cards[card_id].zone_name.Contains("OPPOSING PLAY"))
 			{
 				this.enemy_field_cards.Remove(card_id);
+				Dictionary<string, deck_card> herby_deck = build_herby_deck.herby_deck();
+				if (herby_deck.ContainsKey(this.cards[card_id].name))
+				{
+					if (herby_deck[this.cards[card_id].name].lose_aura != null)
+					{
+						herby_deck[this.cards[card_id].name].lose_aura(this.cards[card_id], this);
+					}
+				}
 			}
 
 			this.cards[card_id].prev_zone_name = this.cards[card_id].zone_name;
