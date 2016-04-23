@@ -47,6 +47,7 @@
 			this.y_coord = new System.Windows.Forms.Label();
 			this.action_label = new System.Windows.Forms.Label();
 			this.action = new System.Windows.Forms.Label();
+			this.chk_copy_log = new System.Windows.Forms.CheckBox();
 			((System.ComponentModel.ISupportInitialize)(this.kill_wins_spinner)).BeginInit();
 			((System.ComponentModel.ISupportInitialize)(this.kill_losses_spinner)).BeginInit();
 			this.SuspendLayout();
@@ -56,9 +57,9 @@
 			this.chk_view_log.AutoSize = true;
 			this.chk_view_log.Location = new System.Drawing.Point(12, 155);
 			this.chk_view_log.Name = "chk_view_log";
-			this.chk_view_log.Size = new System.Drawing.Size(143, 17);
+			this.chk_view_log.Size = new System.Drawing.Size(70, 17);
 			this.chk_view_log.TabIndex = 22;
-			this.chk_view_log.Text = "View Log (warning: slow)";
+			this.chk_view_log.Text = "View Log";
 			this.chk_view_log.UseVisualStyleBackColor = true;
 			this.chk_view_log.CheckedChanged += new System.EventHandler(this.checkBox1_CheckedChanged);
 			// 
@@ -224,11 +225,22 @@
 			this.action.TabIndex = 23;
 			this.action.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
 			// 
+			// chk_copy_log
+			// 
+			this.chk_copy_log.AutoSize = true;
+			this.chk_copy_log.Location = new System.Drawing.Point(89, 155);
+			this.chk_copy_log.Name = "chk_copy_log";
+			this.chk_copy_log.Size = new System.Drawing.Size(71, 17);
+			this.chk_copy_log.TabIndex = 40;
+			this.chk_copy_log.Text = "Copy Log";
+			this.chk_copy_log.UseVisualStyleBackColor = true;
+			// 
 			// Herby
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
 			this.ClientSize = new System.Drawing.Size(406, 232);
+			this.Controls.Add(this.chk_copy_log);
 			this.Controls.Add(this.y_coord);
 			this.Controls.Add(this.x_coord);
 			this.Controls.Add(this.lbl_y);
@@ -280,6 +292,7 @@
 		private System.Windows.Forms.Label y_coord;
 		private System.Windows.Forms.Label action_label;
 		private System.Windows.Forms.Label action;
+		private System.Windows.Forms.CheckBox chk_copy_log;
 
 		
 

@@ -103,6 +103,12 @@ namespace Herby
 			}
 			prop_name = prop_name.ToLower();
 
+			if (prop_value.Length == 0)
+			{
+				//prop value is no good
+				return false;
+			}
+
 			switch (prop_name)
 			{
 				case "name":
@@ -231,14 +237,6 @@ namespace Herby
 			else if (zone_name.Contains("OPPOSING PLAY"))
 			{
 				this.enemy_field_cards[card_id] = this.cards[card_id];
-				Dictionary<string, deck_card> herby_deck = build_herby_deck.herby_deck();
-				if (herby_deck.ContainsKey(this.cards[card_id].name))
-				{
-					if (herby_deck[this.cards[card_id].name].gain_aura != null)
-					{
-						herby_deck[this.cards[card_id].name].gain_aura(this.cards[card_id], this);
-					}
-				}
 			}
 		}
 
@@ -252,24 +250,30 @@ namespace Herby
 			else if (this.cards[card_id].zone_name.Contains("FRIENDLY PLAY"))
 			{
 				this.my_field_cards.Remove(card_id);
-				Dictionary<string, deck_card> herby_deck = build_herby_deck.herby_deck();
-				if (herby_deck.ContainsKey(this.cards[card_id].name))
+				if (this.cards[card_id].name != null)
 				{
-					if (herby_deck[this.cards[card_id].name].lose_aura != null)
+					Dictionary<string, deck_card> herby_deck = build_herby_deck.herby_deck();
+					if (herby_deck.ContainsKey(this.cards[card_id].name))
 					{
-						herby_deck[this.cards[card_id].name].lose_aura(this.cards[card_id], this);
+						if (herby_deck[this.cards[card_id].name].lose_aura != null)
+						{
+							herby_deck[this.cards[card_id].name].lose_aura(this.cards[card_id], this);
+						}
 					}
 				}
 			}
 			else if (this.cards[card_id].zone_name.Contains("OPPOSING PLAY"))
 			{
 				this.enemy_field_cards.Remove(card_id);
-				Dictionary<string, deck_card> herby_deck = build_herby_deck.herby_deck();
-				if (herby_deck.ContainsKey(this.cards[card_id].name))
+				if (this.cards[card_id].name != null)
 				{
-					if (herby_deck[this.cards[card_id].name].lose_aura != null)
+					Dictionary<string, deck_card> herby_deck = build_herby_deck.herby_deck();
+					if (herby_deck.ContainsKey(this.cards[card_id].name))
 					{
-						herby_deck[this.cards[card_id].name].lose_aura(this.cards[card_id], this);
+						if (herby_deck[this.cards[card_id].name].lose_aura != null)
+						{
+							herby_deck[this.cards[card_id].name].lose_aura(this.cards[card_id], this);
+						}
 					}
 				}
 			}

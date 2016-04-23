@@ -337,7 +337,14 @@ namespace Herby
 					args.Result = best_move;
 				});
 
-				set_action_text("Calculating best move\r\n" + this.num_best_move_workers + " threads active");
+				if (this.num_best_move_workers > 0)
+				{
+					set_action_text("Calculating best move\r\n" + this.num_best_move_workers + " threads active");
+				}
+				else
+				{
+					set_action_text("");
+				}
 
 				bm_bgs[cur_worker].RunWorkerCompleted += new RunWorkerCompletedEventHandler(
 				delegate(object o, RunWorkerCompletedEventArgs args)
@@ -371,35 +378,48 @@ namespace Herby
 						set_action_text("Running best move");
 						run_best_move(best_move);
 						
-						Console.Write("Best move: ");
-						if (best_move.moves.Count() == 1)
+						try
 						{
-							if (this.cur_board.cards.ContainsKey(best_move.moves[0]))
+							Console.Write("Best move: ");
+							if (best_move.moves.Count() == 1)
 							{
-								Console.WriteLine(this.cur_board.cards[best_move.moves[0]].name);
+								if (this.cur_board.cards.ContainsKey(best_move.moves[0]))
+								{
+									Console.WriteLine(this.cur_board.cards[best_move.moves[0]].name);
+								}
+								else
+								{
+									Console.WriteLine(best_move.moves[0]);
+								}
 							}
-							else
+							else if (best_move.moves.Count() == 2)
 							{
-								Console.WriteLine(best_move.moves[0]);
+								Console.Write(this.cur_board.cards[best_move.moves[0]].name + " > ");
+								if (this.cur_board.cards.ContainsKey(best_move.moves[1]))
+								{
+									Console.WriteLine(this.cur_board.cards[best_move.moves[1]].name);
+								}
+								else
+								{
+									Console.WriteLine(best_move.moves[1]);
+								}
 							}
-						}
-						else if (best_move.moves.Count() == 2)
-						{
-							Console.Write(this.cur_board.cards[best_move.moves[0]].name + " > ");
-							if (this.cur_board.cards.ContainsKey(best_move.moves[1]))
+							else if (best_move.moves.Count() == 3)
 							{
+								Console.Write(this.cur_board.cards[best_move.moves[0]].name + " > ");
 								Console.WriteLine(this.cur_board.cards[best_move.moves[1]].name);
 							}
-							else
-							{
-								Console.WriteLine(best_move.moves[1]);
-							}
 						}
-						else if (best_move.moves.Count() == 3)
+						catch (Exception e)
 						{
-							Console.WriteLine(this.cur_board.cards[best_move.moves[0]].name);
-							Console.WriteLine(best_move.moves[1]);
-							Console.WriteLine(this.cur_board.cards[best_move.moves[1]].name);
+							Console.WriteLine("Tried to write best move but couldn't (" + e.Message + ")");
+							for (int j = 0; i < 3; i++)
+							{
+								if (best_move.moves.Count() > j)
+								{
+									Console.WriteLine("Best move " + (j + 1) + ": " + best_move.moves[j]);
+								}
+							}
 						}
 						
 						//wait a short while for animation to play and interactivity to return
@@ -498,6 +518,11 @@ namespace Herby
 					FileShare.ReadWrite);
 				
 				this.hs_log_file = new StreamReader(hslog_filestream);
+
+				if (chk_copy_log.Checked && this.cur_board.my_name != "" && this.cur_board.enemy_name != "")
+				{
+					File.Copy(log_location, log_location.Replace("output_log.txt", "output_log_" + this.cur_board.my_name + "_" + this.cur_board.enemy_name + ".txt"), true);
+				}
 
 				string modded_log_contents = "";
 				this.my_controller_value = "";
@@ -792,6 +817,13 @@ namespace Herby
 						
 						cur_id = get_line_value(line, "id");
 						log_state.add_card_to_zone(cur_id, zone_split[1]);
+
+						string card_name = get_card_name(line);
+						if (card_name.Length > 0)
+						{
+							log_state.cards[cur_id].name = card_name;
+						}
+
 						if (zone_split[1] == "FRIENDLY PLAY (Hero)")
 						{
 							log_state.my_hero_id = get_line_value(line, "id");
@@ -800,11 +832,6 @@ namespace Herby
 						{
 							log_state.enemy_hero_id = get_line_value(line, "id");
 						}
-						string card_name = get_card_name(line);
-						if (card_name.Length > 0)
-						{
-							log_state.cards[cur_id].name = card_name;
-						}
 					}
 				}
 
@@ -812,6 +839,8 @@ namespace Herby
 				{
 					hs_log_file.BaseStream.SetLength(0);
 					this.wipe_log = false;
+					log_state.my_name = "";
+					log_state.enemy_name = "";
 				}
 
 				if (chk_view_log.Checked)
