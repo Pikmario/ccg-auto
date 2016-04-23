@@ -233,6 +233,14 @@ namespace Herby
 						herby_deck[this.cards[card_id].name].gain_aura(this.cards[card_id], this);
 					}
 				}
+
+				foreach (var cur_card in this.my_field_cards.Values)
+				{
+					if (cur_card.local_id != card_id && herby_deck.ContainsKey(cur_card.name) && herby_deck[cur_card.name].enter_aura != null)
+					{
+						herby_deck[cur_card.name].enter_aura(this.cards[card_id]);
+					}
+				}
 			}
 			else if (zone_name.Contains("OPPOSING PLAY"))
 			{

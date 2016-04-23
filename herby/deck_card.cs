@@ -15,5 +15,6 @@ namespace Herby
 		public Action<card, board_state, card> effect;
 		public Action<card, board_state> gain_aura;
 		public Action<card, board_state> lose_aura;
+		public Action<card> enter_aura;
 	}
 }

@@ -337,14 +337,7 @@ namespace Herby
 					args.Result = best_move;
 				});
 
-				if (this.num_best_move_workers > 0)
-				{
-					set_action_text("Calculating best move\r\n" + this.num_best_move_workers + " threads active");
-				}
-				else
-				{
-					set_action_text("");
-				}
+				set_action_text("Calculating best move\r\n" + this.num_best_move_workers + " threads active");
 
 				bm_bgs[cur_worker].RunWorkerCompleted += new RunWorkerCompletedEventHandler(
 				delegate(object o, RunWorkerCompletedEventArgs args)
@@ -413,7 +406,7 @@ namespace Herby
 						catch (Exception e)
 						{
 							Console.WriteLine("Tried to write best move but couldn't (" + e.Message + ")");
-							for (int j = 0; i < 3; i++)
+							for (int j = 0; j < 3; j++)
 							{
 								if (best_move.moves.Count() > j)
 								{
