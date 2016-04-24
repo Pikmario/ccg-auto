@@ -809,13 +809,13 @@ namespace Herby
 						string[] zone_split = line.Split(new string[] {" to "}, 0);
 						
 						cur_id = get_line_value(line, "id");
-						log_state.add_card_to_zone(cur_id, zone_split[1]);
 
 						string card_name = get_card_name(line);
 						if (card_name.Length > 0)
 						{
 							log_state.cards[cur_id].name = card_name;
 						}
+						log_state.add_card_to_zone(cur_id, zone_split[1]);
 
 						if (zone_split[1] == "FRIENDLY PLAY (Hero)")
 						{
