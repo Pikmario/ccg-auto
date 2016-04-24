@@ -1219,7 +1219,7 @@ namespace Herby
 			//finally, end turn and hero power
 			foreach (var cur_card in board.my_field_cards.Values)
 			{
-				if (cur_card.zone_name == "FRIENDLY PLAY (Hero Power)" && cur_card.mana_cost <= board.cur_mana && !cur_card.tags.exhausted)
+				if (cur_card.zone_name == "FRIENDLY PLAY (Hero Power)" && cur_card.mana_cost <= board.cur_mana && !cur_card.tags.exhausted && this.cur_board.cards[this.cur_board.enemy_hero_id].tags.immune == false)
 				{
 					possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id } });
 					break;
