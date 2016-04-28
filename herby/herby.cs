@@ -147,6 +147,7 @@ namespace Herby
 		string output_log = "";
 
 		public card_play cur_best_move;
+		public bool lethal_detected = false;
 
 		public int num_best_move_workers;
 
@@ -329,6 +330,7 @@ namespace Herby
 			
 			//calculate best move based on game state and stat weights
 			//first we get a list of all the possible plays for the initital game state
+			this.lethal_detected = false;
 			List<card_play> possible_plays = get_possible_plays(new board_state(this.cur_board));
 			
 			//split these possible plays into a unique bg worker
@@ -920,9 +922,12 @@ namespace Herby
 				
 				if (cur_depth < max_depth && possible_plays[i].moves[0] != "END TURN")
 				{
-					card_play best_lower_action = calculate_best_move(new board_state(simulated_board_state), cur_depth + 1, max_depth);
+					if (this.lethal_detected == false)
+					{
+						card_play best_lower_action = calculate_best_move(new board_state(simulated_board_state), cur_depth + 1, max_depth);
 					
-					possible_plays[i].score += best_lower_action.score;
+						possible_plays[i].score += best_lower_action.score;
+					}
 				}
 				if (possible_plays[i].score > best_play.score ||	//if calc'd score has a higher score than current
 					(possible_plays[i].score == best_play.score && possible_plays[i].moves[0] == "END TURN"))	//all things equal, just pass turn
@@ -942,6 +947,7 @@ namespace Herby
 				if (best_play.score > 5000)
 				{
 					//i have lethal, don't bother calculating any other options
+					this.lethal_detected = true;
 					return best_play;
 				}
 			}
