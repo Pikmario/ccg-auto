@@ -7,6 +7,8 @@ using System.Threading;
 using System.Windows.Forms;
 using System.Runtime.InteropServices;
 using System.IO;
+using System.Text;
+using System.Security.Cryptography;
 using Newtonsoft.Json;
 
 namespace Herby
@@ -158,6 +160,10 @@ namespace Herby
 
 		public List<string> high_prio_targets;
 
+		public Dictionary<string, bool> hashes;
+
+		bool debug = false;
+
 		public Herby()
         {
 			string json = File.ReadAllText("herby.json");
@@ -165,6 +171,10 @@ namespace Herby
 			
 			get_config_settings(config);
 
+			if (this.debug)
+			{
+				this.BackColor = Color.Yellow;
+			}
 
 			Control.CheckForIllegalCrossThreadCalls = false;
 
@@ -299,7 +309,10 @@ namespace Herby
 			{
 				//it just became our turn, wait a few seconds before clawing at cards we can't use yet
 				set_action_text("Waiting for start of turn draw");
-				Thread.Sleep(7000);
+				if (this.debug == false)
+				{
+					Thread.Sleep(7000);
+				}
 				this.is_my_turn = true;
 				return;
 			}
@@ -322,6 +335,7 @@ namespace Herby
 			List<BackgroundWorker> bm_bgs = new List<BackgroundWorker>();
 			List<List<card_play>> split_plays = splitList(possible_plays, 3);
 			
+			this.hashes = new Dictionary<string, bool>();
 			for (int i = 0; i < split_plays.Count(); i++)
 			{
 				//keep track of how many bg workers we've spawned
@@ -361,15 +375,18 @@ namespace Herby
 					//one worker less is active, make note of it
 					set_action_text("Calculating best move\r\n" + (this.num_best_move_workers - 1) + " threads active");
 
-					if (this.num_best_move_workers == 1)
+					if (this.num_best_move_workers <= 1)
 					{
 						//we've taken out the last bg worker, run the best move they all calculated
 
 						//play out the calculated best move
 						card_play best_move = this.cur_best_move;
-						
+
 						set_action_text("Running best move");
-						run_best_move(best_move);
+						if (this.debug == false)
+						{
+							run_best_move(best_move);
+						}
 						
 						try
 						{
@@ -469,7 +486,7 @@ namespace Herby
 			}
 			int mulligan_board = (this.cur_board.count_cards_in_hand() == 3 ? 0 : 1);
 			set_action_text("Mulliganing cards");
-			foreach (var cur_card in this.cur_board.my_hand_cards.Values)
+			foreach (var cur_card in this.cur_board.cards.Values)
 			{
 				//find all cards in hand with a mana cost above 4 or below 1, toss them
 				if (cur_card.zone_name == "FRIENDLY HAND" && cur_card.name != "The Coin" && (cur_card.mana_cost > 4 || cur_card.mana_cost < 1))
@@ -517,7 +534,7 @@ namespace Herby
 					File.Copy(log_location, log_location.Replace("output_log.txt", "output_log_" + this.cur_board.my_name + "_" + this.cur_board.enemy_name + ".txt"), true);
 				}
 
-				string modded_log_contents = "";
+				StringBuilder modded_log_contents = new StringBuilder();
 				this.my_controller_value = "";
 				
 				board_state log_state = new board_state();
@@ -533,9 +550,9 @@ namespace Herby
 						continue;
 					}
 
-					if (chk_view_log.Checked)
+					//if (chk_view_log.Checked)
 					{
-						modded_log_contents += line + "\r\n";
+						modded_log_contents.AppendLine(line);
 					}
 					
 					if (line.Contains("CREATE_GAME") && log_state.game_active == false)
@@ -586,17 +603,17 @@ namespace Herby
 						continue;
 					}
 
-					if (log_state.game_active == false)
-					{
-						continue;
-					}
-
 					if (line.Contains("goldRewardState = ALREADY_CAPPED") && this.running)
 					{
 						//we hit the gold cap, wee
 						//quit the game, we've got nothing to gain by continuing
 						quit_game();
 						quit_herby();
+					}
+
+					if (log_state.game_active == false)
+					{
+						continue;
 					}
 					if (line.Contains("PrepareHistoryForCurrentTaskList") || !line.Contains("tag=") || line.Contains("TAG_CHANGE"))
 					{
@@ -838,9 +855,9 @@ namespace Herby
 
 				if (chk_view_log.Checked)
 				{
-					if (this.output_log != modded_log_contents)
+					if (this.output_log != modded_log_contents.ToString())
 					{
-						this.output_log = modded_log_contents;
+						this.output_log = modded_log_contents.ToString();
 						log_output.Text = output_log;
 						log_output.SelectionStart = log_output.TextLength;
 						log_output.ScrollToCaret();
@@ -881,13 +898,20 @@ namespace Herby
 			card_play best_play = new card_play{moves = new List<string>{""}, score = -1000};
 
 			max_depth = (int)Math.Ceiling(Math.Log(300/possible_plays.Count(), 2));
-			
+
 			//then for each possible play, see which yields the best board state
 			//recurse until max_depth has been reached
 			for (int i = 0; i < possible_plays.Count(); i++)
 			{
 				double score_before = calculate_board_value(board);
 				board_state simulated_board_state = simulate_board_state(new board_state(board), possible_plays[i]);
+				string hashed_board_state = md5(simulated_board_state.convert_cards_to_string());
+				if (this.hashes.ContainsKey(hashed_board_state))
+				{
+					//we've already calculated this identical board state, throw it out
+					continue;
+				}
+				hashes[hashed_board_state] = true;
 				double score_after = calculate_board_value(simulated_board_state);
 
 				double board_score = score_after - score_before;
@@ -931,26 +955,212 @@ namespace Herby
 
 			//look at all the cards in hand that we can play
 			//first look at spells and battlecries we can shoot at the enemy hero
-			foreach (var cur_card in board.my_hand_cards.Values)
+			foreach (var cur_card in board.cards.Values)
 			{
-				if (cur_card.mana_cost <= board.cur_mana)
+				if (cur_card.zone_name != "FRIENDLY HAND")
 				{
-					if (herby_deck.ContainsKey(cur_card.name))
+					continue;
+				}
+
+				if (cur_card.mana_cost > board.cur_mana)
+				{
+					continue;
+				}
+
+				if (herby_deck.ContainsKey(cur_card.name))
+				{
+					if (herby_deck[cur_card.name].type == "spell" || herby_deck[cur_card.name].type == "minion")
 					{
-						if (herby_deck[cur_card.name].type == "spell" || herby_deck[cur_card.name].type == "minion")
+						if (herby_deck[cur_card.name].target == "enemy")
 						{
-							if (herby_deck[cur_card.name].target == "enemy")
+							//DAT IF CHAIN THO
+							foreach (var enemy_card in board.cards.Values)
 							{
-								//DAT IF CHAIN THO
-								foreach (var enemy_card in board.enemy_field_cards.Values)
+								if (enemy_card.zone_name == "OPPOSING PLAY (Hero)" && enemy_card.tags.immune == false)
 								{
-									if (enemy_card.zone_name == "OPPOSING PLAY (Hero)" && enemy_card.tags.immune == false)
+									//target's the enemy hero, shoot his stupid face
+									possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, enemy_card.local_id, herby_deck[cur_card.name].type } });
+									break;
+								}
+							}
+						}
+					}
+				}
+				else
+				{
+					//this card isn't defined, log it
+					log_missing_card(cur_card.name);
+				}
+			}
+
+			//then look at summoning minions and targeting non-hero enemies
+			foreach (var cur_card in board.cards.Values)
+			{
+				if (cur_card.zone_name != "FRIENDLY HAND")
+				{
+					//card isn't in hand
+					continue;
+				}
+
+				if (cur_card.mana_cost > board.cur_mana)
+				{
+					//card costs more mana than we have
+					continue;
+				}
+
+				//only cards we know about can be used, else unpredictable things will occur
+				if (cur_card.card_type == "MINION" && board.count_minions_on_field() < 7)
+				{
+					//if it's a minion, just add a thing for playing it
+					if (cur_card.tags.battlecry == false)
+					{
+						//minion has no battlecry, most likely safe to play
+						possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, "minion" } });
+					}
+					else
+					{
+						//minion has a battlecry, need to make sure we have logic for it
+						if (herby_deck.ContainsKey(cur_card.name))
+						{
+							if (herby_deck[cur_card.name].target == "none")
+							{
+								//targetless battlecry, just add it in
+								possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, "minion" } });
+							}
+							else
+							{
+								string search_zone = "";
+								bool contains = false;
+								var check_cards = board.cards;
+								switch (herby_deck[cur_card.name].target)
+								{
+									case "minion":
+										search_zone = "PLAY";
+										contains = true;
+										break;
+									case "enemy":
+										search_zone = "OPPOSING PLAY";
+										contains = true;
+										break;
+									case "enemy_minion":
+										search_zone = "OPPOSING PLAY";
+										contains = false;
+										break;
+									case "friendly":
+										search_zone = "FRIENDLY PLAY";
+										contains = true;
+										break;
+									case "friendly_minion":
+										search_zone = "FRIENDLY PLAY";
+										contains = false;
+										break;
+									default:
+										break;
+								}
+									
+								foreach (var cur_target in check_cards.Values)
+								{
+									if (contains)
 									{
-										//target's the enemy hero, shoot his stupid face
-										possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, enemy_card.local_id, herby_deck[cur_card.name].type } });
+										if (cur_target.zone_name.Contains(search_zone) && !cur_target.zone_name.Contains("Power") && !cur_target.zone_name.Contains("Weapon") && (cur_target.tags.stealth == false || cur_target.zone_name.Contains("FRIENDLY")))
+										{
+											if (cur_target.zone_name.Contains("Hero"))
+											{
+												continue;
+											}
+											possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, cur_target.local_id, "minion" } });
+										}
+									}
+									else
+									{
+										if (cur_target.zone_name == search_zone && (cur_target.tags.stealth == false || cur_target.zone_name.Contains("FRIENDLY")))
+										{
+											possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, cur_target.local_id, "minion" } });
+										}
 									}
 								}
 							}
+						}
+					}
+				}
+				else if (cur_card.card_type == "ABILITY" || cur_card.card_type == "SPELL")
+				{
+					//spell or secret, make sure we have it defined
+					if (herby_deck.ContainsKey(cur_card.name))
+					{
+						if (herby_deck[cur_card.name].type == "spell")
+						{
+							//card is a spell, figure out where to throw it
+							if (herby_deck[cur_card.name].target != "none")
+							{
+								//spell has an explicit target, figure out who
+								string search_zone = "";
+								bool contains = false;
+								var check_cards = board.cards;
+								switch (herby_deck[cur_card.name].target)
+								{
+									case "minion":
+										search_zone = "PLAY";
+										contains = true;
+										break;
+									case "enemy":
+										search_zone = "OPPOSING PLAY";
+										contains = true;
+										break;
+									case "enemy_minion":
+										search_zone = "OPPOSING PLAY";
+										contains = false;
+										break;
+									case "friendly":
+										search_zone = "FRIENDLY PLAY";
+										contains = true;
+										break;
+									case "friendly_minion":
+										search_zone = "FRIENDLY PLAY";
+										contains = false;
+										break;
+									default:
+										break;
+								}
+
+								foreach (var cur_target in check_cards.Values)
+								{
+									if (contains)
+									{
+										if (cur_target.zone_name.Contains(search_zone) && !cur_target.zone_name.Contains("Power") && !cur_target.zone_name.Contains("Weapon") && (cur_target.tags.stealth == false || cur_target.zone_name.Contains("FRIENDLY")) && cur_target.tags.cant_be_targeted_by_abilities == false)
+										{
+											if (cur_target.zone_name.Contains("Hero"))
+											{
+												continue;
+											}
+											possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, cur_target.local_id, "spell" } });
+										}
+									}
+									else
+									{
+										if (cur_target.zone_name == search_zone && cur_target.tags.stealth == false && cur_target.tags.cant_be_targeted_by_abilities == false)
+										{
+											possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, cur_target.local_id, "spell" } });
+										}
+									}
+								}
+							}
+							else
+							{
+								//spell has no target, either does a random target, goes for face, or summons something
+								possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, "spell" } });
+							}
+						}
+						else if (herby_deck[cur_card.name].type == "secret")
+						{
+							//playing a secret, make sure no other secrets of the same type already exist
+							if (board.check_if_secret_in_play() == true)
+							{
+								//this secret is already in play, can't use it
+								continue;
+							}
+
+							possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, "secret" } });
 						}
 					}
 					else
@@ -959,195 +1169,16 @@ namespace Herby
 						log_missing_card(cur_card.name);
 					}
 				}
-			}
-
-			//then look at summoning minions and targeting non-hero enemies
-			foreach (var cur_card in board.my_hand_cards.Values)
-			{
-				if (cur_card.mana_cost <= board.cur_mana)
+				else if (cur_card.card_type == "WEAPON")
 				{
-					//only cards we know about can be used, else unpredictable things will occur
-					if (cur_card.card_type == "MINION" && board.count_minions_on_field() < 7)
+					//playing a weapon, make sure we don't already have one we're about to destroy
+					if (board.check_if_weapon_in_play() == true)
 					{
-						//if it's a minion, just add a thing for playing it
-						if (cur_card.tags.battlecry == false)
-						{
-							//minion has no battlecry, most likely safe to play
-							possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, "minion" } });
-						}
-						else
-						{
-							//minion has a battlecry, need to make sure we have logic for it
-							if (herby_deck.ContainsKey(cur_card.name))
-							{
-								if (herby_deck[cur_card.name].target == "none")
-								{
-									//targetless battlecry, just add it in
-									possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, "minion" } });
-								}
-								else
-								{
-									string search_zone = "";
-									bool contains = false;
-									var check_cards = board.cards;
-									switch (herby_deck[cur_card.name].target)
-									{
-										case "minion":
-											search_zone = "PLAY";
-											contains = true;
-											check_cards = board.my_field_cards.Union(board.enemy_field_cards).ToDictionary(k => k.Key, v => v.Value);
-											break;
-										case "enemy":
-											search_zone = "OPPOSING PLAY";
-											contains = true;
-											check_cards = board.enemy_field_cards;
-											break;
-										case "enemy_minion":
-											search_zone = "OPPOSING PLAY";
-											contains = false;
-											check_cards = board.enemy_field_cards;
-											break;
-										case "friendly":
-											search_zone = "FRIENDLY PLAY";
-											contains = true;
-											check_cards = board.my_field_cards;
-											break;
-										case "friendly_minion":
-											search_zone = "FRIENDLY PLAY";
-											contains = false;
-											check_cards = board.my_field_cards;
-											break;
-										default:
-											break;
-									}
-									
-									foreach (var cur_target in check_cards.Values)
-									{
-										if (contains)
-										{
-											if (cur_target.zone_name.Contains(search_zone) && !cur_target.zone_name.Contains("Power") && !cur_target.zone_name.Contains("Weapon") && (cur_target.tags.stealth == false || cur_target.zone_name.Contains("FRIENDLY")))
-											{
-												if (cur_target.zone_name.Contains("Hero"))
-												{
-													continue;
-												}
-												possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, cur_target.local_id, "minion" } });
-											}
-										}
-										else
-										{
-											if (cur_target.zone_name == search_zone && (cur_target.tags.stealth == false || cur_target.zone_name.Contains("FRIENDLY")))
-											{
-												possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, cur_target.local_id, "minion" } });
-											}
-										}
-									}
-								}
-							}
-						}
+						//already have a weapon, don't play this weapon
+						continue;
 					}
-					else if (cur_card.card_type == "ABILITY" || cur_card.card_type == "SPELL")
-					{
-						//spell or secret, make sure we have it defined
-						if (herby_deck.ContainsKey(cur_card.name))
-						{
-							if (herby_deck[cur_card.name].type == "spell")
-							{
-								//card is a spell, figure out where to throw it
-								if (herby_deck[cur_card.name].target != "none")
-								{
-									//spell has an explicit target, figure out who
-									string search_zone = "";
-									bool contains = false;
-									var check_cards = board.cards;
-									switch (herby_deck[cur_card.name].target)
-									{
-										case "minion":
-											search_zone = "PLAY";
-											contains = true;
-											check_cards = board.my_field_cards.Union(board.enemy_field_cards).ToDictionary(k => k.Key, v => v.Value);
-											break;
-										case "enemy":
-											search_zone = "OPPOSING PLAY";
-											contains = true;
-											check_cards = board.enemy_field_cards;
-											break;
-										case "enemy_minion":
-											search_zone = "OPPOSING PLAY";
-											contains = false;
-											check_cards = board.enemy_field_cards;
-											break;
-										case "friendly":
-											search_zone = "FRIENDLY PLAY";
-											contains = true;
-											check_cards = board.my_field_cards;
-											break;
-										case "friendly_minion":
-											search_zone = "FRIENDLY PLAY";
-											contains = false;
-											check_cards = board.my_field_cards;
-											break;
-										default:
-											break;
-									}
 
-									foreach (var cur_target in check_cards.Values)
-									{
-										if (contains)
-										{
-											if (cur_target.zone_name.Contains(search_zone) && !cur_target.zone_name.Contains("Power") && !cur_target.zone_name.Contains("Weapon") && (cur_target.tags.stealth == false || cur_target.zone_name.Contains("FRIENDLY")) && cur_target.tags.cant_be_targeted_by_abilities == false)
-											{
-												if (cur_target.zone_name.Contains("Hero"))
-												{
-													continue;
-												}
-												possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, cur_target.local_id, "spell" } });
-											}
-										}
-										else
-										{
-											if (cur_target.zone_name == search_zone && cur_target.tags.stealth == false && cur_target.tags.cant_be_targeted_by_abilities == false)
-											{
-												possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, cur_target.local_id, "spell" } });
-											}
-										}
-									}
-								}
-								else
-								{
-									//spell has no target, either does a random target, goes for face, or summons something
-									possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, "spell" } });
-								}
-							}
-							else if (herby_deck[cur_card.name].type == "secret")
-							{
-								//playing a secret, make sure no other secrets of the same type already exist
-								if (board.check_if_secret_in_play() == true)
-								{
-									//this secret is already in play, can't use it
-									continue;
-								}
-
-								possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, "secret" } });
-							}
-						}
-						else
-						{
-							//this card isn't defined, log it
-							log_missing_card(cur_card.name);
-						}
-					}
-					else if (cur_card.card_type == "WEAPON")
-					{
-						//playing a weapon, make sure we don't already have one we're about to destroy
-						if (board.check_if_weapon_in_play() == true)
-						{
-							//already have a weapon, don't play this weapon
-							continue;
-						}
-
-						possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, "weapon" } });
-					}
+					possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, "weapon" } });
 				}
 			}
 
@@ -1156,7 +1187,7 @@ namespace Herby
 			bool enemy_has_taunt = board.check_if_taunt_in_play(true);
 			
 			//now loop through all of our minions that can attack
-			foreach (var cur_card in board.my_field_cards.Values)
+			foreach (var cur_card in board.cards.Values)
 			{
 				if ((cur_card.zone_name == "FRIENDLY PLAY" || cur_card.zone_name == "FRIENDLY PLAY (Hero)") && cur_card.tags.exhausted == false && cur_card.tags.frozen == false && cur_card.tags.cant_attack == false)
 				{
@@ -1172,17 +1203,18 @@ namespace Herby
 					//first, the enemy hero
 					if (!enemy_has_taunt)
 					{
-						foreach (var cur_enemy in board.enemy_field_cards.Values)
+						foreach (var cur_enemy in board.cards.Values)
 						{
 							if (cur_enemy.zone_name == "OPPOSING PLAY (Hero)" && cur_enemy.tags.immune == false)
 							{
 								possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, cur_enemy.local_id } });
+								break;
 							}
 						}
 					}
 
 					//then all the minions
-					foreach (var cur_enemy in board.enemy_field_cards.Values)
+					foreach (var cur_enemy in board.cards.Values)
 					{
 						if (enemy_has_taunt)
 						{
@@ -1217,9 +1249,9 @@ namespace Herby
 			}
 
 			//finally, end turn and hero power
-			foreach (var cur_card in board.my_field_cards.Values)
+			foreach (var cur_card in board.cards.Values)
 			{
-				if (cur_card.zone_name == "FRIENDLY PLAY (Hero Power)" && cur_card.mana_cost <= board.cur_mana && !cur_card.tags.exhausted && this.cur_board.cards[this.cur_board.enemy_hero_id].tags.immune == false)
+				if (cur_card.zone_name == "FRIENDLY PLAY (Hero Power)" && cur_card.mana_cost <= board.cur_mana && !cur_card.tags.exhausted && this.cur_board.enemy_hero_id != null && this.cur_board.cards[this.cur_board.enemy_hero_id].tags.immune == false)
 				{
 					possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id } });
 					break;
@@ -1295,7 +1327,8 @@ namespace Herby
 				if (action.moves[0] == "END TURN")
 				{
 					//NOTHIIIIIIING
-					//no really, make no changes to the board
+					//do something stupid that won't affect anything to make sure the hash for END TURN is different
+					simmed_board.cards[simmed_board.my_hero_id].tags.powered_up = true;
 				}
 				else
 				{
@@ -1305,11 +1338,14 @@ namespace Herby
 					simmed_board.cards[action.moves[0]].tags.exhausted = true;
 
 					//run the inspire code for each minion on my field that has it
-					foreach (var cur_card in simmed_board.my_field_cards.Values)
+					foreach (var cur_card in simmed_board.cards.Values)
 					{
-						if (herby_deck.ContainsKey(cur_card.name) && herby_deck[cur_card.name].inspire != null && !cur_card.tags.silenced)
+						if (cur_card.zone_name == "FRIENDLY PLAY")
 						{
-							herby_deck[cur_card.name].inspire(cur_card, simmed_board);
+							if (herby_deck.ContainsKey(cur_card.name) && herby_deck[cur_card.name].inspire != null && !cur_card.tags.silenced)
+							{
+								herby_deck[cur_card.name].inspire(cur_card, simmed_board);
+							}
 						}
 					}
 				}
@@ -1335,7 +1371,7 @@ namespace Herby
 						if (simmed_board.my_hero_id == action.moves[0])
 						{
 							//my hero is attacking, lower the durability of his weapon
-							foreach (var card in simmed_board.my_field_cards.Values)
+							foreach (var card in simmed_board.cards.Values)
 							{
 								if (card.zone_name == "FRIENDLY PLAY (Weapon)")
 								{
@@ -1454,10 +1490,7 @@ namespace Herby
 		{
 			double score = 0;
 
-			//merge all the various card dictionaries into one big one
-			//this is super fucked
-			var all_cards = board.my_field_cards.Union(board.my_hand_cards).Union(board.enemy_field_cards).ToDictionary(k => k.Key, v => v.Value);
-			foreach (var cur_card in all_cards.Values)
+			foreach (var cur_card in board.cards.Values)
 			{
 				double cur_card_value = 0;
 				
@@ -1600,7 +1633,7 @@ namespace Herby
 						//if enemy has lethal and we're ending turn, just concede
 						int total_atk = 0;
 						total_atk = this.cur_board.check_attack_on_board(true);
-
+						
 						if (total_atk >= this.cur_board.my_health && !this.cur_board.check_if_taunt_in_play() && this.cur_board.enemy_health > 0)
 						{
 							//enemy has more damage than i have health, and i have no taunts. I CHOOSE DEATH
@@ -1821,13 +1854,13 @@ namespace Herby
 
 		public void open_packs()
 		{
-			click_and_drag(244, 412, 840, 400, 100, 100);
-			click_location(866, 228, true, 50);
-			click_location(1160, 340, true, 50);
-			click_location(1020, 720, true, 50);
-			click_location(700, 700, true, 50);
-			click_location(600, 330, true, 50);
-			click_location(850, 470, true, 50);
+			click_and_drag(400, 550, 1100, 500, 100, 100);
+			click_location(1100, 300, true, 50);
+			click_location(1400, 400, true, 50);
+			click_location(1270, 800, true, 50);
+			click_location(950, 800, true, 50);
+			click_location(840, 400, true, 50);
+			click_location(1100, 550, true, 50);
 		}
 
 		void concede()
@@ -1867,12 +1900,19 @@ namespace Herby
 			}
 			var dir = new DirectoryInfo(this.db_path);
 
-			foreach (var file in dir.EnumerateFiles(type + "*"))
+			try
 			{
-				file.Delete();
-			}
+				foreach (var file in dir.EnumerateFiles(type + "*"))
+				{
+					file.Delete();
+				}
 			
-			File.Create(this.db_path + type + "_" + count).Close();
+				File.Create(this.db_path + type + "_" + count).Close();
+			}
+			catch
+			{
+
+			}
 
 			this.rand = new Random();
 		}
@@ -2146,6 +2186,22 @@ namespace Herby
 				this.Width = 300;
 				this.Height = 220;
 			}
+		}
+
+		public static string md5(string input)
+		{
+			// Use input string to calculate MD5 hash
+			MD5 md5 = MD5.Create();
+			byte[] inputBytes = Encoding.ASCII.GetBytes(input);
+			byte[] hashBytes = md5.ComputeHash(inputBytes);
+
+			// Convert the byte array to hexadecimal string
+			StringBuilder sb = new StringBuilder();
+			for (int i = 0; i < hashBytes.Length; i++)
+			{
+				sb.Append(hashBytes[i].ToString("X2"));
+			}
+			return sb.ToString();
 		}
     }
 }

@@ -1,14 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text;
 
 namespace Herby
 {
 	public class board_state
 	{
 		public Dictionary<string, card> cards = new Dictionary<string, card>();
-		public Dictionary<string, card> my_hand_cards = new Dictionary<string, card>();
-		public Dictionary<string, card> my_field_cards = new Dictionary<string, card>();
-		public Dictionary<string, card> enemy_field_cards = new Dictionary<string, card>();
 
 		public bool my_turn = false;
 		public int max_mana = 1;
@@ -61,20 +59,6 @@ namespace Herby
 			foreach (KeyValuePair<string, card> entry in cloned_board.cards)
 			{
 				this.cards[entry.Key] = new card(entry.Value);
-
-				string zone_name = this.cards[entry.Key].zone_name;
-				if (zone_name == "FRIENDLY HAND")
-				{
-					this.my_hand_cards[entry.Key] = this.cards[entry.Key];
-				}
-				else if (zone_name.Contains("FRIENDLY PLAY"))
-				{
-					this.my_field_cards[entry.Key] = this.cards[entry.Key];
-				}
-				else if (zone_name.Contains("OPPOSING PLAY"))
-				{
-					this.enemy_field_cards[entry.Key] = this.cards[entry.Key];
-				}
 			}
 		}
 
@@ -218,13 +202,8 @@ namespace Herby
 			this.remove_card_from_zone(card_id);
 			this.cards[card_id].zone_name = zone_name;
 			
-			if (zone_name == "FRIENDLY HAND")
+			if (zone_name.Contains("FRIENDLY PLAY"))
 			{
-				this.my_hand_cards[card_id] = this.cards[card_id];
-			}
-			else if (zone_name.Contains("FRIENDLY PLAY"))
-			{
-				this.my_field_cards[card_id] = this.cards[card_id];
 				Dictionary<string, deck_card> herby_deck = build_herby_deck.herby_deck();
 				if (herby_deck.ContainsKey(this.cards[card_id].name))
 				{
@@ -234,45 +213,21 @@ namespace Herby
 					}
 				}
 
-				foreach (var cur_card in this.my_field_cards.Values)
+				foreach (var cur_card in this.cards.Values)
 				{
-					if (cur_card.local_id != card_id && herby_deck.ContainsKey(cur_card.name) && herby_deck[cur_card.name].enter_aura != null)
+					if (cur_card.local_id != card_id && cur_card.name != null && herby_deck.ContainsKey(cur_card.name) && herby_deck[cur_card.name].enter_aura != null)
 					{
 						herby_deck[cur_card.name].enter_aura(this.cards[card_id]);
 					}
 				}
-			}
-			else if (zone_name.Contains("OPPOSING PLAY"))
-			{
-				this.enemy_field_cards[card_id] = this.cards[card_id];
 			}
 		}
 
 		public void remove_card_from_zone(string card_id)
 		{
 			//temp wipe out their zone name, it'll get put back later (probably)
-			if (this.cards[card_id].zone_name == "FRIENDLY HAND")
+			if (this.cards[card_id].zone_name.Contains(" PLAY"))
 			{
-				this.my_hand_cards.Remove(card_id);
-			}
-			else if (this.cards[card_id].zone_name.Contains("FRIENDLY PLAY"))
-			{
-				this.my_field_cards.Remove(card_id);
-				if (this.cards[card_id].name != null)
-				{
-					Dictionary<string, deck_card> herby_deck = build_herby_deck.herby_deck();
-					if (herby_deck.ContainsKey(this.cards[card_id].name))
-					{
-						if (herby_deck[this.cards[card_id].name].lose_aura != null)
-						{
-							herby_deck[this.cards[card_id].name].lose_aura(this.cards[card_id], this);
-						}
-					}
-				}
-			}
-			else if (this.cards[card_id].zone_name.Contains("OPPOSING PLAY"))
-			{
-				this.enemy_field_cards.Remove(card_id);
 				if (this.cards[card_id].name != null)
 				{
 					Dictionary<string, deck_card> herby_deck = build_herby_deck.herby_deck();
@@ -309,9 +264,12 @@ namespace Herby
 		public int count_cards_in_hand()
 		{
 			int card_count = 0;
-			foreach (var cur_card in this.my_hand_cards.Values)
+			foreach (var cur_card in this.cards.Values)
 			{
-				card_count++;
+				if (cur_card.zone_name == "FRIENDLY HAND")
+				{
+					card_count++;
+				}
 			}
 			return card_count;
 		}
@@ -334,7 +292,7 @@ namespace Herby
 			string zone = enemy ? "OPPOSING" : "FRIENDLY";
 			zone += " PLAY (Hero)";
 
-			foreach (var cur_card in this.enemy_field_cards.Values)
+			foreach (var cur_card in this.cards.Values)
 			{
 				if (cur_card.zone_name == zone)
 				{
@@ -356,20 +314,17 @@ namespace Herby
 		{
 			int minion_count = 0;
 			string zone_name;
-			var check_cards = this.cards;
 			
 			if (enemy)
 			{
 				zone_name = "OPPOSING PLAY";
-				check_cards = this.enemy_field_cards;
 			}
 			else
 			{
 				zone_name = "FRIENDLY PLAY";
-				check_cards = this.my_field_cards;
 			}
 
-			foreach (var cur_card in check_cards.Values)
+			foreach (var cur_card in this.cards.Values)
 			{
 				if (cur_card.zone_name == zone_name)
 				{
@@ -387,9 +342,9 @@ namespace Herby
 
 		public bool check_if_beast_in_play()
 		{
-			foreach (var cur_card in this.my_field_cards.Values)
+			foreach (var cur_card in this.cards.Values)
 			{
-				if (cur_card.family == "beast")
+				if (cur_card.zone_name == "FRIENDLY PLAY" && cur_card.family == "beast")
 				{
 					return true;
 				}
@@ -414,9 +369,7 @@ namespace Herby
 		{
 			string field = (enemy_field ? "OPPOSING PLAY" : "FRIENDLY PLAY");
 
-			var check_cards = (enemy_field ? this.enemy_field_cards : this.my_field_cards);
-
-			foreach (var cur_card in check_cards.Values)
+			foreach (var cur_card in this.cards.Values)
 			{
 				if (cur_card.zone_name == field && cur_card.tags.taunt == true && cur_card.tags.stealth == false)
 				{
@@ -428,7 +381,7 @@ namespace Herby
 
 		public bool check_if_weapon_in_play()
 		{
-			foreach (var weapon_check in this.my_field_cards.Values)
+			foreach (var weapon_check in this.cards.Values)
 			{
 				if (weapon_check.zone_name == "FRIENDLY PLAY (Weapon)")
 				{
@@ -443,9 +396,12 @@ namespace Herby
 		{
 			int total_atk = 0;
 			int cur_atk;
-			var check_cards = (enemy_field ? this.enemy_field_cards : this.my_field_cards);
-			foreach (var card in check_cards.Values)
+			foreach (var card in this.cards.Values)
 			{
+				if ((enemy_field && !card.zone_name.Contains("OPPOSING PLAY")) || (!enemy_field && !card.zone_name.Contains("FRIENDLY_PLAY")))
+				{
+					continue;
+				}
 				cur_atk = card.atk;
 				if (card.tags.windfury)
 				{
@@ -458,6 +414,17 @@ namespace Herby
 				total_atk += cur_atk;
 			}
 			return total_atk;
+		}
+
+		public string convert_cards_to_string()
+		{
+			StringBuilder sb = new System.Text.StringBuilder();
+			
+			foreach (var cur_card in this.cards.Values)
+			{
+				sb.Append(cur_card.ToString());
+			}
+			return sb.ToString();
 		}
 	}
 }

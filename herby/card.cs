@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Newtonsoft.Json;
 
 namespace Herby
 {
@@ -163,6 +164,11 @@ namespace Herby
 					herby_deck[this.name].lose_aura(this, board_state);
 				}
 			}
+		}
+
+		public override string ToString()
+		{
+			return JsonConvert.SerializeObject(this);
 		}
 	}
 }
