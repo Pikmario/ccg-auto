@@ -165,6 +165,8 @@ namespace Herby
 
 		bool debug = false;
 
+		public List<Button> calced_move_buttons = new List<Button>();
+
 		public Herby()
         {
 			string json = File.ReadAllText("herby.json");
@@ -552,10 +554,7 @@ namespace Herby
 						continue;
 					}
 
-					//if (chk_view_log.Checked)
-					{
-						modded_log_contents.AppendLine(line);
-					}
+					modded_log_contents.AppendLine(line);
 					
 					if (line.Contains("CREATE_GAME") && log_state.game_active == false)
 					{
@@ -1790,11 +1789,17 @@ namespace Herby
 					main_loop();
 					Thread.Sleep(1);
 				}
+				this.calc_first_move_button.Show();
 				set_status_text("Inactive");
 				set_action_text("");
 				status.BackColor = Color.FromArgb(255, 170, 170);
 			});
 
+			if (this.chk_view_log.Checked == false)
+			{
+				this.calc_first_move_button.Hide();
+				this.hide_moves_button_Click(new object(), new EventArgs());
+			}
 			set_status_text("Herby playing");
 			this.Text = "Herby (Playing)";
 			status.BackColor = Color.FromArgb(136, 204, 136);
@@ -2182,15 +2187,121 @@ namespace Herby
 		{
 			if (this.chk_view_log.Checked)
 			{
-				this.log_output.Visible = true;
+				this.log_output.Show();
 				this.Width = 1000;
 				this.Height = 600;
+				this.hide_moves_button.Hide();
 			}
 			else
 			{
-				this.log_output.Visible = false;
+				this.log_output.Hide();
 				this.Width = 300;
 				this.Height = 220;
+			}
+		}
+
+		private void calc_first_move_button_Click(object sender, EventArgs e)
+		{
+			this.chk_view_log.Checked = false;
+			this.checkBox1_CheckedChanged(sender, e);
+			this.Width = 1000;
+			this.Height = 600;
+			this.hide_moves_button.Show();
+
+			this.output_moves(this.cur_board);
+		}
+
+		private void output_moves(board_state board)
+		{
+			List<card_play> possible_plays = get_possible_plays(board);
+			List<board_state> possible_boards = new List<board_state>();
+
+			for (int i = 0; i < this.calced_move_buttons.Count(); i++)
+			{
+				this.Controls.Remove(this.calced_move_buttons[i]);
+			}
+			this.calced_move_buttons = new List<Button>();
+
+			int x = 0;
+			int y = 0;
+			for (int i = 0; i < possible_plays.Count(); i++)
+			{
+				//simulate this play
+				board_state simmed_board = simulate_board_state(new board_state(board), possible_plays[i]);
+
+				//get this simulated play's score
+				double score_before = calculate_board_value(board);
+				double score_after = calculate_board_value(simmed_board);
+				double total_score = score_after - score_before;
+
+				//save this board state for later use
+				possible_boards.Insert(i, simmed_board);
+
+				//make a button for this possible play using the saved board state
+				this.calced_move_buttons.Insert(i, new Button());
+				this.calced_move_buttons[i].Font = new System.Drawing.Font("Microsoft Sans Serif", 6.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+				this.calced_move_buttons[i].Name = "calced_move_" + i;
+				this.calced_move_buttons[i].Size = new System.Drawing.Size(186, 24);
+				this.calced_move_buttons[i].UseVisualStyleBackColor = true;
+				this.calced_move_buttons[i].TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+
+				this.calced_move_buttons[i].Location = new System.Drawing.Point(12 + (x * 192), 180 + (y * 30));
+
+				y++;
+				if (y > 11)
+				{
+					y = 0;
+					x++;
+				}
+
+				string button_name = total_score + ": ";
+				if (possible_plays[i].moves.Count() == 1)
+				{
+					if (this.cur_board.cards.ContainsKey(possible_plays[i].moves[0]))
+					{
+						button_name += simmed_board.cards[possible_plays[i].moves[0]].name;
+					}
+					else
+					{
+						button_name += possible_plays[i].moves[0];
+					}
+				}
+				else if (possible_plays[i].moves.Count() == 2)
+				{
+					button_name += simmed_board.cards[possible_plays[i].moves[0]].name + " > ";
+					if (simmed_board.cards.ContainsKey(possible_plays[i].moves[1]))
+					{
+						button_name += simmed_board.cards[possible_plays[i].moves[1]].name;
+					}
+					else
+					{
+						button_name += possible_plays[i].moves[1];
+					}
+				}
+				else if (possible_plays[i].moves.Count() == 3)
+				{
+					button_name += simmed_board.cards[possible_plays[i].moves[0]].name + " > ";
+					button_name += simmed_board.cards[possible_plays[i].moves[1]].name;
+				}
+
+				this.calced_move_buttons[i].Text = button_name;
+
+				int cur_button = i;
+				this.calced_move_buttons[i].Click += (sender, args) => { output_moves(possible_boards[cur_button]); };
+
+				this.Controls.Add(this.calced_move_buttons[i]);
+			}
+		}
+
+		private void hide_moves_button_Click(object sender, EventArgs e)
+		{
+			this.Width = 300;
+			this.Height = 220;
+			this.hide_moves_button.Hide();
+
+			for (int i = 0; i < this.calced_move_buttons.Count(); i++)
+			{
+				this.Controls.Remove(this.calced_move_buttons[i]);
 			}
 		}
 

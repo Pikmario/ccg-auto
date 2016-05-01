@@ -48,6 +48,8 @@
 			this.action_label = new System.Windows.Forms.Label();
 			this.action = new System.Windows.Forms.Label();
 			this.chk_copy_log = new System.Windows.Forms.CheckBox();
+			this.calc_first_move_button = new System.Windows.Forms.Button();
+			this.hide_moves_button = new System.Windows.Forms.Button();
 			((System.ComponentModel.ISupportInitialize)(this.kill_wins_spinner)).BeginInit();
 			((System.ComponentModel.ISupportInitialize)(this.kill_losses_spinner)).BeginInit();
 			this.SuspendLayout();
@@ -55,7 +57,7 @@
 			// chk_view_log
 			// 
 			this.chk_view_log.AutoSize = true;
-			this.chk_view_log.Location = new System.Drawing.Point(12, 155);
+			this.chk_view_log.Location = new System.Drawing.Point(12, 127);
 			this.chk_view_log.Name = "chk_view_log";
 			this.chk_view_log.Size = new System.Drawing.Size(70, 17);
 			this.chk_view_log.TabIndex = 22;
@@ -75,9 +77,9 @@
 			// 
 			// log_output
 			// 
-			this.log_output.Location = new System.Drawing.Point(12, 178);
+			this.log_output.Location = new System.Drawing.Point(962, 180);
 			this.log_output.Name = "log_output";
-			this.log_output.Size = new System.Drawing.Size(960, 372);
+			this.log_output.Size = new System.Drawing.Size(10, 370);
 			this.log_output.TabIndex = 21;
 			this.log_output.Text = "";
 			this.log_output.Visible = false;
@@ -132,7 +134,7 @@
 			// kill_game_label
 			// 
 			this.kill_game_label.AutoSize = true;
-			this.kill_game_label.Location = new System.Drawing.Point(201, 67);
+			this.kill_game_label.Location = new System.Drawing.Point(198, 53);
 			this.kill_game_label.Name = "kill_game_label";
 			this.kill_game_label.Size = new System.Drawing.Size(76, 13);
 			this.kill_game_label.TabIndex = 31;
@@ -140,14 +142,14 @@
 			// 
 			// kill_wins_spinner
 			// 
-			this.kill_wins_spinner.Location = new System.Drawing.Point(201, 88);
+			this.kill_wins_spinner.Location = new System.Drawing.Point(201, 69);
 			this.kill_wins_spinner.Name = "kill_wins_spinner";
 			this.kill_wins_spinner.Size = new System.Drawing.Size(35, 20);
 			this.kill_wins_spinner.TabIndex = 32;
 			// 
 			// kill_losses_spinner
 			// 
-			this.kill_losses_spinner.Location = new System.Drawing.Point(201, 115);
+			this.kill_losses_spinner.Location = new System.Drawing.Point(201, 95);
 			this.kill_losses_spinner.Name = "kill_losses_spinner";
 			this.kill_losses_spinner.Size = new System.Drawing.Size(35, 20);
 			this.kill_losses_spinner.TabIndex = 33;
@@ -155,7 +157,7 @@
 			// kill_wins_label
 			// 
 			this.kill_wins_label.AutoSize = true;
-			this.kill_wins_label.Location = new System.Drawing.Point(242, 90);
+			this.kill_wins_label.Location = new System.Drawing.Point(242, 71);
 			this.kill_wins_label.Name = "kill_wins_label";
 			this.kill_wins_label.Size = new System.Drawing.Size(28, 13);
 			this.kill_wins_label.TabIndex = 34;
@@ -164,7 +166,7 @@
 			// kill_losses_label
 			// 
 			this.kill_losses_label.AutoSize = true;
-			this.kill_losses_label.Location = new System.Drawing.Point(242, 117);
+			this.kill_losses_label.Location = new System.Drawing.Point(242, 97);
 			this.kill_losses_label.Name = "kill_losses_label";
 			this.kill_losses_label.Size = new System.Drawing.Size(36, 13);
 			this.kill_losses_label.TabIndex = 35;
@@ -173,7 +175,7 @@
 			// lbl_x
 			// 
 			this.lbl_x.AutoSize = true;
-			this.lbl_x.Location = new System.Drawing.Point(161, 156);
+			this.lbl_x.Location = new System.Drawing.Point(165, 128);
 			this.lbl_x.Name = "lbl_x";
 			this.lbl_x.Size = new System.Drawing.Size(17, 13);
 			this.lbl_x.TabIndex = 36;
@@ -182,7 +184,7 @@
 			// lbl_y
 			// 
 			this.lbl_y.AutoSize = true;
-			this.lbl_y.Location = new System.Drawing.Point(218, 156);
+			this.lbl_y.Location = new System.Drawing.Point(217, 127);
 			this.lbl_y.Name = "lbl_y";
 			this.lbl_y.Size = new System.Drawing.Size(17, 13);
 			this.lbl_y.TabIndex = 37;
@@ -191,7 +193,7 @@
 			// x_coord
 			// 
 			this.x_coord.AutoSize = true;
-			this.x_coord.Location = new System.Drawing.Point(181, 156);
+			this.x_coord.Location = new System.Drawing.Point(180, 128);
 			this.x_coord.Name = "x_coord";
 			this.x_coord.Size = new System.Drawing.Size(31, 13);
 			this.x_coord.TabIndex = 38;
@@ -200,7 +202,7 @@
 			// y_coord
 			// 
 			this.y_coord.AutoSize = true;
-			this.y_coord.Location = new System.Drawing.Point(241, 156);
+			this.y_coord.Location = new System.Drawing.Point(232, 127);
 			this.y_coord.Name = "y_coord";
 			this.y_coord.Size = new System.Drawing.Size(31, 13);
 			this.y_coord.TabIndex = 39;
@@ -228,18 +230,42 @@
 			// chk_copy_log
 			// 
 			this.chk_copy_log.AutoSize = true;
-			this.chk_copy_log.Location = new System.Drawing.Point(89, 155);
+			this.chk_copy_log.Location = new System.Drawing.Point(88, 127);
 			this.chk_copy_log.Name = "chk_copy_log";
 			this.chk_copy_log.Size = new System.Drawing.Size(71, 17);
 			this.chk_copy_log.TabIndex = 40;
 			this.chk_copy_log.Text = "Copy Log";
 			this.chk_copy_log.UseVisualStyleBackColor = true;
 			// 
+			// calc_first_move_button
+			// 
+			this.calc_first_move_button.Location = new System.Drawing.Point(12, 150);
+			this.calc_first_move_button.Name = "calc_first_move_button";
+			this.calc_first_move_button.Size = new System.Drawing.Size(90, 24);
+			this.calc_first_move_button.TabIndex = 41;
+			this.calc_first_move_button.Text = "Calc First Move";
+			this.calc_first_move_button.UseVisualStyleBackColor = true;
+			this.calc_first_move_button.Click += new System.EventHandler(this.calc_first_move_button_Click);
+			// 
+			// hide_moves_button
+			// 
+			this.hide_moves_button.Location = new System.Drawing.Point(108, 150);
+			this.hide_moves_button.Name = "hide_moves_button";
+			this.hide_moves_button.Size = new System.Drawing.Size(90, 24);
+			this.hide_moves_button.TabIndex = 42;
+			this.hide_moves_button.Text = "Hide Moves";
+			this.hide_moves_button.UseVisualStyleBackColor = true;
+			this.hide_moves_button.Visible = false;
+			this.hide_moves_button.Click += new System.EventHandler(this.hide_moves_button_Click);
+			// 
 			// Herby
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-			this.ClientSize = new System.Drawing.Size(406, 232);
+			this.ClientSize = new System.Drawing.Size(1150, 599);
+			this.Controls.Add(this.log_output);
+			this.Controls.Add(this.hide_moves_button);
+			this.Controls.Add(this.calc_first_move_button);
 			this.Controls.Add(this.chk_copy_log);
 			this.Controls.Add(this.y_coord);
 			this.Controls.Add(this.x_coord);
@@ -259,7 +285,6 @@
 			this.Controls.Add(this.action);
 			this.Controls.Add(this.status);
 			this.Controls.Add(this.chk_view_log);
-			this.Controls.Add(this.log_output);
 			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
 			this.MaximizeBox = false;
 			this.Name = "Herby";
@@ -293,6 +318,8 @@
 		private System.Windows.Forms.Label action_label;
 		private System.Windows.Forms.Label action;
 		private System.Windows.Forms.CheckBox chk_copy_log;
+		private System.Windows.Forms.Button calc_first_move_button;
+		private System.Windows.Forms.Button hide_moves_button;
 
 		
 

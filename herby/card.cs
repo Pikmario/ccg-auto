@@ -47,7 +47,7 @@ namespace Herby
 		public int max_health; //max health of minion
 		public int armor; //armor of hero
 		public int durability; //durability of weapon
-		protected int damage; //current damage of minion
+		public int damage; //current damage of minion
 		public int atk; //attack of minion
 		public int temp_atk = 0; //attack gained from effects like abusive
 		public int mana_cost; //mana cost of card
@@ -61,7 +61,7 @@ namespace Herby
 		public string prev_zone_name = "";
 		public int zone_position;
 
-		public card_tags tags;
+		public card_tags tags = new card_tags(true);
 
 		public card(string id)
 		{
