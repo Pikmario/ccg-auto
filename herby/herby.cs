@@ -163,7 +163,7 @@ namespace Herby
 
 		public Dictionary<string, bool> hashes;
 
-		bool debug = true;
+		bool debug = false;
 
 		public List<Button> calced_move_buttons = new List<Button>();
 
