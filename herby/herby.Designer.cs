@@ -77,9 +77,9 @@
 			// 
 			// log_output
 			// 
-			this.log_output.Location = new System.Drawing.Point(962, 180);
+			this.log_output.Location = new System.Drawing.Point(12, 180);
 			this.log_output.Name = "log_output";
-			this.log_output.Size = new System.Drawing.Size(10, 370);
+			this.log_output.Size = new System.Drawing.Size(960, 370);
 			this.log_output.TabIndex = 21;
 			this.log_output.Text = "";
 			this.log_output.Visible = false;
