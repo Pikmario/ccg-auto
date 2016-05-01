@@ -163,7 +163,7 @@ namespace Herby
 
 		public Dictionary<string, bool> hashes;
 
-		bool debug = false;
+		bool debug = true;
 
 		public List<Button> calced_move_buttons = new List<Button>();
 
@@ -2202,13 +2202,16 @@ namespace Herby
 
 		private void calc_first_move_button_Click(object sender, EventArgs e)
 		{
-			this.chk_view_log.Checked = false;
-			this.checkBox1_CheckedChanged(sender, e);
-			this.Width = 1000;
-			this.Height = 600;
-			this.hide_moves_button.Show();
+			if (this.cur_board.game_active == true)
+			{
+				this.chk_view_log.Checked = false;
+				this.checkBox1_CheckedChanged(sender, e);
+				this.Width = 1000;
+				this.Height = 600;
+				this.hide_moves_button.Show();
 
-			this.output_moves(this.cur_board);
+				this.output_moves(this.cur_board);
+			}
 		}
 
 		private void output_moves(board_state board)
