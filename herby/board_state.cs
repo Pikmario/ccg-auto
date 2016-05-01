@@ -204,6 +204,10 @@ namespace Herby
 			
 			if (zone_name.Contains("FRIENDLY PLAY"))
 			{
+				if (this.cards[card_id].tags.charge == false && !zone_name.Contains("Hero"))
+				{
+					this.cards[card_id].tags.exhausted = true;
+				}
 				Dictionary<string, deck_card> herby_deck = build_herby_deck.herby_deck();
 				if (herby_deck.ContainsKey(this.cards[card_id].name))
 				{
@@ -215,7 +219,7 @@ namespace Herby
 
 				foreach (var cur_card in this.cards.Values)
 				{
-					if (cur_card.local_id != card_id && cur_card.name != null && herby_deck.ContainsKey(cur_card.name) && herby_deck[cur_card.name].enter_aura != null)
+					if (cur_card.local_id != card_id && this.cards[card_id].zone_name == cur_card.zone_name && cur_card.name != null && herby_deck.ContainsKey(cur_card.name) && herby_deck[cur_card.name].enter_aura != null)
 					{
 						herby_deck[cur_card.name].enter_aura(this.cards[card_id]);
 					}

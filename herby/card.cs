@@ -61,7 +61,7 @@ namespace Herby
 		public string prev_zone_name = "";
 		public int zone_position;
 
-		public card_tags tags = new card_tags(true);
+		public card_tags tags;
 
 		public card(string id)
 		{
