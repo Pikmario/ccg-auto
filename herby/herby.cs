@@ -1408,6 +1408,10 @@ namespace Herby
 						{
 							simmed_board.cards[action.moves[0]].tags.exhausted = true;
 						}
+						else
+						{
+							simmed_board.cards[action.moves[0]].tags.exhausted = false;
+						}
 						
 						if (herby_deck.ContainsKey(simmed_board.cards[action.moves[0]].name))
 						{
@@ -1455,6 +1459,10 @@ namespace Herby
 					if (simmed_board.cards[action.moves[0]].tags.charge == false)
 					{
 						simmed_board.cards[action.moves[0]].tags.exhausted = true;
+					}
+					else
+					{
+						simmed_board.cards[action.moves[0]].tags.exhausted = false;
 					}
 					
 					herby_deck[simmed_board.cards[action.moves[0]].name].battlecry(simmed_board.cards[action.moves[0]], simmed_board, simmed_board.cards[action.moves[1]]);
