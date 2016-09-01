@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Linq;
 
 namespace Herby
 {
@@ -22,11 +23,22 @@ namespace Herby
 		public string my_hero_id;
 		public string enemy_hero_id;
 
+		public string hero_power_id;
+		public string weapon_id;
+
 		public bool game_active;
 
 		public string game_state;
 		public bool mulligan_complete = false;
 		public bool wait_for_mulligan = true;
+
+		public List<string> cards_board = new List<string>();
+		public List<string> cards_hand = new List<string>();
+		public List<string> cards_minions = new List<string>();
+		public List<string> cards_friendly = new List<string>();
+		public List<string> cards_opposing = new List<string>();
+		public List<string> cards_friendly_minions = new List<string>();
+		public List<string> cards_opposing_minions = new List<string>();
 
 		public board_state()
 		{
@@ -50,11 +62,22 @@ namespace Herby
 			this.my_hero_id = cloned_board.my_hero_id;
 			this.enemy_hero_id = cloned_board.enemy_hero_id;
 
+			this.hero_power_id = cloned_board.hero_power_id;
+			this.weapon_id = cloned_board.weapon_id;
+
 			this.game_active = cloned_board.game_active;
 
 			this.game_state = cloned_board.game_state;
 			this.mulligan_complete = cloned_board.mulligan_complete;
 			this.wait_for_mulligan = cloned_board.wait_for_mulligan;
+
+			this.cards_board = new List<string>(cloned_board.cards_board);
+			this.cards_hand = new List<string>(cloned_board.cards_hand);
+			this.cards_minions = new List<string>(cloned_board.cards_minions);
+			this.cards_friendly = new List<string>(cloned_board.cards_friendly);
+			this.cards_opposing = new List<string>(cloned_board.cards_opposing);
+			this.cards_friendly_minions = new List<string>(cloned_board.cards_friendly_minions);
+			this.cards_opposing_minions = new List<string>(cloned_board.cards_opposing_minions);
 
 			foreach (KeyValuePair<string, card> entry in cloned_board.cards)
 			{
@@ -201,6 +224,51 @@ namespace Herby
 		{
 			this.remove_card_from_zone(card_id);
 			this.cards[card_id].zone_name = zone_name;
+
+			if (zone_name == "FRIENDLY PLAY")
+			{
+				this.cards_board.Add(card_id);
+				this.cards_minions.Add(card_id);
+				this.cards_friendly.Add(card_id);
+				this.cards_friendly_minions.Add(card_id);
+			}
+			if (zone_name == "FRIENDLY PLAY (Hero)")
+			{
+				this.cards_board.Add(card_id);
+				this.cards_friendly.Add(card_id);
+			}
+			if (zone_name == "FRIENDLY HAND")
+			{
+				this.cards_hand.Add(card_id);
+			}
+			if (zone_name == "OPPOSING PLAY")
+			{
+				this.cards_board.Add(card_id);
+				this.cards_minions.Add(card_id);
+				this.cards_opposing.Add(card_id);
+				this.cards_opposing_minions.Add(card_id);
+			}
+			if (zone_name == "OPPOSING PLAY (Hero)")
+			{
+				this.cards_board.Add(card_id);
+				this.cards_opposing.Add(card_id);
+			}
+			if (zone_name == "FRIENDLY PLAY (Hero Power")
+			{
+				this.hero_power_id = card_id;
+			}
+			if (zone_name == "FRIENDLY PLAY (Weapon)")
+			{
+				this.weapon_id = card_id;
+			}
+
+			this.cards_board = this.cards_board.Distinct().ToList();
+			this.cards_hand = this.cards_hand.Distinct().ToList();
+			this.cards_minions = this.cards_minions.Distinct().ToList();
+			this.cards_friendly = this.cards_friendly.Distinct().ToList();
+			this.cards_opposing = this.cards_opposing.Distinct().ToList();
+			this.cards_friendly_minions = this.cards_friendly_minions.Distinct().ToList();
+			this.cards_opposing_minions = this.cards_opposing_minions.Distinct().ToList();
 			
 			if (zone_name.Contains("FRIENDLY PLAY"))
 			{
@@ -217,9 +285,10 @@ namespace Herby
 					}
 				}
 
-				foreach (var cur_card in this.cards.Values)
+				foreach (string board_card_id in this.cards_friendly_minions)
 				{
-					if (cur_card.local_id != card_id && this.cards[card_id].zone_name == cur_card.zone_name && cur_card.name != null && herby_deck.ContainsKey(cur_card.name) && herby_deck[cur_card.name].enter_aura != null)
+					card cur_card = this.cards[board_card_id];
+					if (cur_card.local_id != card_id && cur_card.name != null && herby_deck.ContainsKey(cur_card.name) && herby_deck[cur_card.name].enter_aura != null)
 					{
 						herby_deck[cur_card.name].enter_aura(this.cards[card_id]);
 					}
@@ -248,6 +317,14 @@ namespace Herby
 			this.cards[card_id].prev_zone_name = this.cards[card_id].zone_name;
 			this.cards[card_id].zone_name = "";
 
+			this.cards_board.Remove(card_id);
+			this.cards_hand.Remove(card_id);
+			this.cards_minions.Remove(card_id);
+			this.cards_friendly.Remove(card_id);
+			this.cards_opposing.Remove(card_id);
+			this.cards_friendly_minions.Remove(card_id);
+			this.cards_opposing_minions.Remove(card_id);
+
 			/*
 			this is unnecessary to keep track of
 			foreach (var cur_card in this.cards.Values)
@@ -267,15 +344,7 @@ namespace Herby
 
 		public int count_cards_in_hand()
 		{
-			int card_count = 0;
-			foreach (var cur_card in this.cards.Values)
-			{
-				if (cur_card.zone_name == "FRIENDLY HAND")
-				{
-					card_count++;
-				}
-			}
-			return card_count;
+			return this.cards_hand.Count();
 		}
 
 		public void minion_trade(string attacker_id, string defender_id)
@@ -296,47 +365,33 @@ namespace Herby
 			string zone = enemy ? "OPPOSING" : "FRIENDLY";
 			zone += " PLAY (Hero)";
 
-			foreach (var cur_card in this.cards.Values)
+			string card_id = enemy ? this.enemy_hero_id : this.my_hero_id;
+
+			card cur_card = this.cards[card_id];
+
+			cur_card.deal_damage(damage);
+			if (enemy)
 			{
-				if (cur_card.zone_name == zone)
-				{
-					cur_card.deal_damage(damage);
-					if (enemy)
-					{
-						this.enemy_health = cur_card.get_cur_health();
-					}
-					else
-					{
-						this.my_health = cur_card.get_cur_health();
-					}
-					return;
-				}
+				this.enemy_health = cur_card.get_cur_health();
 			}
+			else
+			{
+				this.my_health = cur_card.get_cur_health();
+			}
+
+			return;
 		}
 
 		public int count_minions_on_field(bool enemy = false)
 		{
-			int minion_count = 0;
-			string zone_name;
-			
 			if (enemy)
 			{
-				zone_name = "OPPOSING PLAY";
+				return this.cards_opposing_minions.Count();
 			}
 			else
 			{
-				zone_name = "FRIENDLY PLAY";
+				return this.cards_friendly_minions.Count();
 			}
-
-			foreach (var cur_card in this.cards.Values)
-			{
-				if (cur_card.zone_name == zone_name)
-				{
-					minion_count++;
-				}
-			}
-
-			return minion_count;
 		}
 
 		public int count_minions_in_zone(string zone)
@@ -346,9 +401,10 @@ namespace Herby
 
 		public bool check_if_beast_in_play()
 		{
-			foreach (var cur_card in this.cards.Values)
+			foreach (string card_id in this.cards_friendly_minions)
 			{
-				if (cur_card.zone_name == "FRIENDLY PLAY" && cur_card.family == "beast")
+				card cur_card = this.cards[card_id];
+				if (cur_card.family == "beast")
 				{
 					return true;
 				}
@@ -356,11 +412,11 @@ namespace Herby
 			return false;
 		}
 
-		public bool check_if_secret_in_play()
+		public bool check_if_secret_in_play(string secret_name)
 		{
 			foreach (var secret_check in this.cards.Values)
 			{
-				if (secret_check.zone_name == "FRIENDLY SECRET")
+				if (secret_check.zone_name == "FRIENDLY SECRET" && secret_check.name == secret_name)
 				{
 					//this secret is already in play, can't use it
 					return true;
@@ -371,11 +427,12 @@ namespace Herby
 
 		public bool check_if_taunt_in_play(bool enemy_field = false)
 		{
-			string field = (enemy_field ? "OPPOSING PLAY" : "FRIENDLY PLAY");
+			List<string> check_list = (enemy_field ? this.cards_opposing_minions : this.cards_friendly_minions);
 
-			foreach (var cur_card in this.cards.Values)
+			foreach (string card_id in check_list)
 			{
-				if (cur_card.zone_name == field && cur_card.tags.taunt == true && cur_card.tags.stealth == false)
+				card cur_card = this.cards[card_id];
+				if (cur_card.tags.taunt == true && cur_card.tags.stealth == false)
 				{
 					return true;
 				}
@@ -385,14 +442,13 @@ namespace Herby
 
 		public bool check_if_weapon_in_play()
 		{
-			foreach (var weapon_check in this.cards.Values)
+			card weapon_check = this.cards[this.weapon_id];
+			if (weapon_check.zone_name == "FRIENDLY PLAY (Weapon)")
 			{
-				if (weapon_check.zone_name == "FRIENDLY PLAY (Weapon)")
-				{
-					//we already have a weapon equipped
-					return true;
-				}
+				//we already have a weapon equipped
+				return true;
 			}
+
 			return false;
 		}
 
@@ -400,23 +456,24 @@ namespace Herby
 		{
 			int total_atk = 0;
 			int cur_atk;
-			foreach (var card in this.cards.Values)
+
+			List<string> check_list = (enemy_field ? this.cards_opposing_minions : this.cards_friendly_minions);
+
+			foreach (string card_id in check_list)
 			{
-				if ((enemy_field && !card.zone_name.Contains("OPPOSING PLAY")) || (!enemy_field && !card.zone_name.Contains("FRIENDLY_PLAY")))
-				{
-					continue;
-				}
-				cur_atk = card.atk;
-				if (card.tags.windfury)
+				card cur_card = this.cards[card_id];
+				cur_atk = cur_card.atk;
+				if (cur_card.tags.windfury)
 				{
 					cur_atk *= 2;
 				}
-				if (card.tags.frozen)
+				if (cur_card.tags.frozen || (cur_card.tags.exhausted && !enemy_field))
 				{
 					cur_atk *= 0;
 				}
 				total_atk += cur_atk;
 			}
+			
 			return total_atk;
 		}
 

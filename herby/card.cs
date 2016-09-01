@@ -50,7 +50,7 @@ namespace Herby
 		public int damage; //current damage of minion
 		public int atk; //attack of minion
 		public int temp_atk = 0; //attack gained from effects like abusive
-		public int mana_cost; //mana cost of card
+		public int mana_cost = 0; //mana cost of card
 
 		public int base_health = -1;	//how much health the minion started with
 		public int base_atk = -1;	//how much attack the minion started with
