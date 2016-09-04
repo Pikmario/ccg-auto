@@ -9,10 +9,10 @@ namespace Herby
 		public string target = "none";
 		public string family = "";
 		public double value_in_hand = 0;
-		public Action<card, board_state> deathrattle;
-		public Action<card, board_state> inspire;
-		public Action<card, board_state, card> battlecry;
-		public Action<card, board_state, card> effect;
+		public Action<card, List<board_state>> deathrattle;
+		public Action<card, List<board_state>> inspire;
+		public Action<card, List<board_state>, card> battlecry;
+		public Action<card, List<board_state>, card> effect;
 		public Action<card, board_state> gain_aura;
 		public Action<card, board_state> lose_aura;
 		public Action<card> enter_aura;

@@ -26,34 +26,6 @@ namespace Herby
 		[DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = false)]
 		static extern IntPtr SendMessage(IntPtr hWnd, int Msg, int wParam, int lParam);
 
-		[DllImport("user32.dll")]
-		static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint dwData, UIntPtr dwExtraInfo);
-
-		[StructLayout(LayoutKind.Sequential)]
-		public struct POINT
-		{
-			public int X;
-			public int Y;
-
-			public POINT(int x, int y)
-			{
-				this.X = x;
-				this.Y = y;
-			}
-
-			public POINT(System.Drawing.Point pt) : this(pt.X, pt.Y) { }
-
-			public static implicit operator System.Drawing.Point(POINT p)
-			{
-				return new System.Drawing.Point(p.X, p.Y);
-			}
-
-			public static implicit operator POINT(System.Drawing.Point p)
-			{
-				return new POINT(p.X, p.Y);
-			}
-		}
-
 		static int WM_LBUTTONDOWN = 0x201;	//Left mousebutton down
 		static int WM_LBUTTONUP = 0x202;	//Left mousebutton up
 		static int WM_RBUTTONDOWN = 0x204;	//Right mousebutton down
@@ -166,8 +138,6 @@ namespace Herby
 		bool debug = false;
 
 		public List<Button> calced_move_buttons = new List<Button>();
-
-		double total_time = 0;
 		int counter = 0;
 
 		public Herby()
@@ -393,10 +363,7 @@ namespace Herby
 						//we've taken out the last bg worker, run the best move they all calculated
 
 						//play out the calculated best move
-						DateTime start_time = DateTime.Now;
 						this.cur_best_move = calculate_best_move(this.cur_board, 1, 3);
-						TimeSpan run_time = DateTime.Now - start_time;
-						total_time += run_time.TotalMilliseconds;
 						card_play best_move = this.cur_best_move;
 
 						set_action_text("Running best move");
@@ -405,13 +372,6 @@ namespace Herby
 							run_best_move(best_move);
 						}
 
-						Console.WriteLine("Total time: " + total_time / 1000 + "s");
-						Console.WriteLine("Total actions: " + counter);
-						Console.WriteLine("Avg time: " + (total_time / counter) + "ms");
-
-						total_time = 0;
-						counter = 0;
-						
 						try
 						{
 							Console.Write("Best move: ");
@@ -924,6 +884,8 @@ namespace Herby
 			{
 				possible_plays = get_possible_plays(new board_state(board));
 			}
+
+			//possible_plays = ShuffleList(possible_plays);
 			
 			card_play best_play = new card_play{moves = new List<string>{""}, score = -1000};
 
@@ -931,38 +893,42 @@ namespace Herby
 
 			//then for each possible play, see which yields the best board state
 			//recurse until max_depth has been reached
-			for (int i = 0; i < possible_plays.Count(); i++)
+
+			counter += possible_plays.Count;
+			double score_before = calculate_board_value(board);
+			for (int i = 0; i < possible_plays.Count; i++)
 			{
-				double score_before = calculate_board_value(board);
-				board_state simulated_board_state = simulate_board_state(new board_state(board), possible_plays[i]);
-				string hashed_board_state = md5(simulated_board_state.convert_cards_to_string());
-				if (this.hashes.ContainsKey(hashed_board_state))
+				List<board_state> simulated_board_states = simulate_board_state(new board_state(board), possible_plays[i]);
+				for (int j = 0; j < simulated_board_states.Count; j++)
 				{
-					//we've already calculated this identical board state, throw it out
-					continue;
-				}
-
-				set_action_text("Calculating best move\r\n" + counter + " total moves found");
-				hashes[hashed_board_state] = true;
-				DateTime start_time = DateTime.Now;
-				double score_after = calculate_board_value(simulated_board_state);
-				TimeSpan run_time = DateTime.Now - start_time;
-				total_time += run_time.TotalMilliseconds;
-				counter++;
-
-				double board_score = score_after - score_before;
-
-				possible_plays[i].score = board_score;
-				
-				if (cur_depth < max_depth && possible_plays[i].moves[0] != "END TURN")
-				{
-					if (this.lethal_detected == false)
+					board_state simulated_board_state = simulated_board_states[j];
+					string hashed_board_state = md5(simulated_board_state.convert_cards_to_string());
+					if (this.hashes.ContainsKey(hashed_board_state))
 					{
-						card_play best_lower_action = calculate_best_move(new board_state(simulated_board_state), cur_depth + 1, max_depth);
+						//we've already calculated this identical board state, throw it out
+						goto possible_plays_loop;
+					}
+
+					set_action_text("Calculating best move\r\n" + counter + " total moves found");
+					hashes[hashed_board_state] = true;
+					double score_after = calculate_board_value(simulated_board_state);
+					double board_score = score_after - score_before;
+
+					possible_plays[i].score += board_score;
+				
+					if (cur_depth < max_depth && possible_plays[i].moves[0] != "END TURN")
+					{
+						if (this.lethal_detected == false)
+						{
+							card_play best_lower_action = calculate_best_move(new board_state(simulated_board_state), cur_depth + 1, max_depth);
 					
-						possible_plays[i].score += best_lower_action.score;
+							possible_plays[i].score += best_lower_action.score;
+						}
 					}
 				}
+
+				possible_plays[i].score /= simulated_board_states.Count;
+
 				if (possible_plays[i].score > best_play.score ||	//if calc'd score has a higher score than current
 					(possible_plays[i].score == best_play.score && possible_plays[i].moves[0] == "END TURN"))	//all things equal, just pass turn
 				{
@@ -984,6 +950,8 @@ namespace Herby
 					this.lethal_detected = true;
 					return best_play;
 				}
+				
+				possible_plays_loop: ;
 			}
 			
 			return best_play;
@@ -994,33 +962,6 @@ namespace Herby
 			List<card_play> possible_plays = new List<card_play>();
 
 			//look at all the cards in hand that we can play
-			//first look at spells and battlecries we can shoot at the enemy hero
-			foreach (string card_id in board.cards_hand)
-			{
-				card cur_card = board.cards[card_id];
-				if (cur_card.mana_cost > board.cur_mana)
-				{
-					continue;
-				}
-
-				if (herby_deck.ContainsKey(cur_card.name))
-				{
-					if (herby_deck[cur_card.name].type == "spell" || herby_deck[cur_card.name].type == "minion")
-					{
-						if (herby_deck[cur_card.name].target == "enemy" && board.cards[board.enemy_hero_id].tags.immune == false)
-						{
-							possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, board.enemy_hero_id, herby_deck[cur_card.name].type } });
-						}
-					}
-				}
-				else
-				{
-					//this card isn't defined, log it
-					log_missing_card(cur_card.name);
-				}
-			}
-
-			//then look at summoning minions and targeting non-hero enemies
 			foreach (string card_id in board.cards_hand)
 			{
 				card cur_card = board.cards[card_id];
@@ -1136,9 +1077,9 @@ namespace Herby
 						else if (herby_deck[cur_card.name].type == "secret")
 						{
 							//playing a secret, make sure no other secrets of the same type already exist
-							if (board.check_if_secret_in_play(cur_card.name) == true)
+							if (board.check_if_secret_in_play(cur_card.name) == true || board.cards_secrets.Count() >= 5)
 							{
-								//this secret is already in play, can't use it
+								//this secret is already in play or we're full on secrets, can't use it
 								continue;
 							}
 
@@ -1171,7 +1112,7 @@ namespace Herby
 			int total_atk = board.check_attack_on_board(true);
 			int my_atk = board.check_attack_on_board(false);
 			
-			//now loop through all of our minions that can attack
+			//now loop through all of our cards that can attack
 			foreach (string card_id in board.cards_friendly)
 			{
 				card cur_card = board.cards[card_id];
@@ -1292,8 +1233,9 @@ namespace Herby
 			return possible_plays;
 		}
 
-		board_state simulate_board_state(board_state simmed_board, card_play action)
+		List<board_state> simulate_board_state(board_state simmed_board, card_play action)
 		{
+			List<board_state> simmed_boards = new List<board_state> { simmed_board };
 			if (action.moves.Count() == 1)
 			{
 				//super simple. either end turn or hero power
@@ -1316,7 +1258,7 @@ namespace Herby
 						card cur_card = simmed_board.cards[card_id];
 						if (herby_deck.ContainsKey(cur_card.name) && herby_deck[cur_card.name].inspire != null && !cur_card.tags.silenced)
 						{
-							herby_deck[cur_card.name].inspire(cur_card, simmed_board);
+							herby_deck[cur_card.name].inspire(cur_card, simmed_boards);
 						}
 					}
 				}
@@ -1335,7 +1277,7 @@ namespace Herby
 						if (simmed_board.cards[action.moves[0]].get_cur_health() <= 0 && herby_deck.ContainsKey(simmed_board.cards[action.moves[0]].name) && herby_deck[simmed_board.cards[action.moves[0]].name].deathrattle != null && !simmed_board.cards[action.moves[0]].tags.silenced)
 						{
 							//this card has a deathrattle and it's not silenced, run it
-							herby_deck[simmed_board.cards[action.moves[0]].name].deathrattle(simmed_board.cards[action.moves[0]], simmed_board);
+							herby_deck[simmed_board.cards[action.moves[0]].name].deathrattle(simmed_board.cards[action.moves[0]], simmed_boards);
 						}
 
 						//do the same thing for the minion i just traded with
@@ -1383,14 +1325,14 @@ namespace Herby
 							//check if minion's got a battlecry, and run it
 							if (herby_deck[simmed_board.cards[action.moves[0]].name].battlecry != null)
 							{
-								herby_deck[simmed_board.cards[action.moves[0]].name].battlecry(simmed_board.cards[action.moves[0]], simmed_board, new card());
+								herby_deck[simmed_board.cards[action.moves[0]].name].battlecry(simmed_board.cards[action.moves[0]], simmed_boards, new card());
 							}
 						}
 					}
 					else if (action.moves[1] == "spell")
 					{
 						//casting a spell without a target
-						herby_deck[simmed_board.cards[action.moves[0]].name].effect(simmed_board.cards[action.moves[0]], simmed_board, new card());
+						herby_deck[simmed_board.cards[action.moves[0]].name].effect(simmed_board.cards[action.moves[0]], simmed_boards, new card());
 						simmed_board.remove_card_from_zone(action.moves[0]);
 					}
 					else if (action.moves[1] == "secret")
@@ -1407,11 +1349,15 @@ namespace Herby
 						{
 							if (herby_deck[simmed_board.cards[action.moves[0]].name].battlecry != null)
 							{
-								herby_deck[simmed_board.cards[action.moves[0]].name].battlecry(simmed_board.cards[action.moves[0]], simmed_board, new card());
+								herby_deck[simmed_board.cards[action.moves[0]].name].battlecry(simmed_board.cards[action.moves[0]], simmed_boards, new card());
 							}
 						}
 					}
-					simmed_board.cur_mana -= simmed_board.cards[action.moves[0]].mana_cost;
+
+					for (int i = 0; i < simmed_boards.Count; i++)
+					{
+						simmed_boards[i].cur_mana -= simmed_boards[i].cards[action.moves[0]].mana_cost;
+					}
 				}
 			}
 			else if (action.moves.Count() == 3)
@@ -1430,26 +1376,30 @@ namespace Herby
 						simmed_board.cards[action.moves[0]].tags.exhausted = false;
 					}
 					
-					herby_deck[simmed_board.cards[action.moves[0]].name].battlecry(simmed_board.cards[action.moves[0]], simmed_board, simmed_board.cards[action.moves[1]]);
+					herby_deck[simmed_board.cards[action.moves[0]].name].battlecry(simmed_board.cards[action.moves[0]], simmed_boards, simmed_board.cards[action.moves[1]]);
 				}
 				else if (action.moves[2] == "spell")
 				{
 					//casting a spell
 					simmed_board.remove_card_from_zone(action.moves[0]);
-					herby_deck[simmed_board.cards[action.moves[0]].name].effect(simmed_board.cards[action.moves[0]], simmed_board, simmed_board.cards[action.moves[1]]);
+					herby_deck[simmed_board.cards[action.moves[0]].name].effect(simmed_board.cards[action.moves[0]], simmed_boards, simmed_board.cards[action.moves[1]]);
 				}
-				simmed_board.cur_mana -= simmed_board.cards[action.moves[0]].mana_cost;
+
+				for (int i = 0; i < simmed_boards.Count; i++)
+				{
+					simmed_boards[i].cur_mana -= simmed_boards[i].cards[action.moves[0]].mana_cost;
+				}
 			}
 
 			if ((action.moves.Count() == 2 || action.moves.Count() == 3) && action.moves[1].All(char.IsDigit))
 			{
 				if (simmed_board.cards[action.moves[1]].get_cur_health() <= 0 && herby_deck.ContainsKey(simmed_board.cards[action.moves[1]].name) && herby_deck[simmed_board.cards[action.moves[1]].name].deathrattle != null && !simmed_board.cards[action.moves[1]].tags.silenced)
 				{
-					herby_deck[simmed_board.cards[action.moves[1]].name].deathrattle(simmed_board.cards[action.moves[1]], simmed_board);
+					herby_deck[simmed_board.cards[action.moves[1]].name].deathrattle(simmed_board.cards[action.moves[1]], simmed_boards);
 				}
 			}
 
-			return simmed_board;
+			return simmed_boards;
 		}
 
 		public void log_missing_card(string card_name)
@@ -1532,7 +1482,7 @@ namespace Herby
 					if (cur_card.get_cur_health() > 0)
 					{
 						cur_card_value += cur_card.get_cur_health() * ENEMY_HERO_WEIGHT * -1;
-						if (cur_card.get_cur_health() <= 15)
+						if (cur_card.get_cur_health() <= 8)
 						{
 							//enemy hero is getting low on health, rank him increasingly higher
 							cur_card_value += 300 / (Math.Max(1, cur_card.get_cur_health()));
@@ -1912,7 +1862,7 @@ namespace Herby
 		void open_options_menu()
 		{
 			//click a bunch of times near options make sure the options window isn't already open
-			for (int i = 0; i < 10; i++)
+			for (int i = 0; i < 5; i++)
 			{
 				click_location(this.board_position_boxes["NEAR OPTIONS MENU"], true);
 			}
@@ -1941,6 +1891,7 @@ namespace Herby
 			{
 				click_location(positions[i], true);
 			}
+
 			down_click(true);
 			Thread.Sleep(50);
 			up_click(true);
@@ -2212,7 +2163,9 @@ namespace Herby
 			for (int i = 0; i < possible_plays.Count(); i++)
 			{
 				//simulate this play
-				board_state simmed_board = simulate_board_state(new board_state(board), possible_plays[i]);
+				List<board_state> simmed_boards = simulate_board_state(new board_state(board), possible_plays[i]);
+
+				board_state simmed_board = simmed_boards[0];
 
 				//get this simulated play's score
 				double score_before = calculate_board_value(board);
@@ -2304,6 +2257,21 @@ namespace Herby
 				sb.Append(hashBytes[i].ToString("X2"));
 			}
 			return sb.ToString();
+		}
+
+		public List<E> ShuffleList<E>(List<E> inputList)
+		{
+			List<E> randomList = new List<E>();
+
+			int randomIndex = 0;
+			while (inputList.Count > 0)
+			{
+				randomIndex = this.rand.Next(0, inputList.Count); //Choose a random object in the list
+				randomList.Add(inputList[randomIndex]); //add it to the new, random list
+				inputList.RemoveAt(randomIndex); //remove to avoid duplicates
+			}
+
+			return randomList; //return the new random list
 		}
     }
 }

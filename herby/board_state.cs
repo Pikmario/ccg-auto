@@ -39,6 +39,7 @@ namespace Herby
 		public List<string> cards_opposing = new List<string>();
 		public List<string> cards_friendly_minions = new List<string>();
 		public List<string> cards_opposing_minions = new List<string>();
+		public List<string> cards_secrets = new List<string>();
 
 		public board_state()
 		{
@@ -78,6 +79,7 @@ namespace Herby
 			this.cards_opposing = new List<string>(cloned_board.cards_opposing);
 			this.cards_friendly_minions = new List<string>(cloned_board.cards_friendly_minions);
 			this.cards_opposing_minions = new List<string>(cloned_board.cards_opposing_minions);
+			this.cards_secrets = new List<string>(cloned_board.cards_secrets);
 
 			foreach (KeyValuePair<string, card> entry in cloned_board.cards)
 			{
@@ -261,6 +263,10 @@ namespace Herby
 			{
 				this.weapon_id = card_id;
 			}
+			if (zone_name == "FRIENDLY SECRET")
+			{
+				this.cards_secrets.Add(card_id);
+			}
 
 			this.cards_board = this.cards_board.Distinct().ToList();
 			this.cards_hand = this.cards_hand.Distinct().ToList();
@@ -269,6 +275,7 @@ namespace Herby
 			this.cards_opposing = this.cards_opposing.Distinct().ToList();
 			this.cards_friendly_minions = this.cards_friendly_minions.Distinct().ToList();
 			this.cards_opposing_minions = this.cards_opposing_minions.Distinct().ToList();
+			this.cards_secrets = this.cards_secrets.Distinct().ToList();
 			
 			if (zone_name.Contains("FRIENDLY PLAY"))
 			{
@@ -324,6 +331,7 @@ namespace Herby
 			this.cards_opposing.Remove(card_id);
 			this.cards_friendly_minions.Remove(card_id);
 			this.cards_opposing_minions.Remove(card_id);
+			this.cards_secrets.Remove(card_id);
 
 			/*
 			this is unnecessary to keep track of
@@ -414,9 +422,10 @@ namespace Herby
 
 		public bool check_if_secret_in_play(string secret_name)
 		{
-			foreach (var secret_check in this.cards.Values)
+			foreach (string card_id in this.cards_secrets)
 			{
-				if (secret_check.zone_name == "FRIENDLY SECRET" && secret_check.name == secret_name)
+				card secret_check = this.cards[card_id];
+				if (secret_check.name == secret_name)
 				{
 					//this secret is already in play, can't use it
 					return true;
