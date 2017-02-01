@@ -121,8 +121,6 @@ namespace Herby
 		public card_play cur_best_move;
 		public bool lethal_detected = false;
 
-		public int num_best_move_workers;
-
 		public string log_location;
 
 		FileStream hslog_filestream;
@@ -240,11 +238,6 @@ namespace Herby
 				set_action_text("No action: stop.flag present");
 				return;
 			}
-			if (this.num_best_move_workers > 0)
-			{
-				//we've currently got calculations going on for the best move, just get out of here for now
-				return;
-			}
 
 			this.cur_best_move = new card_play{moves = new List<string>{""}, score = -1000};
 			
@@ -314,134 +307,79 @@ namespace Herby
 			//List<List<card_play>> split_plays = splitList(possible_plays, 3);
 			
 			this.hashes = new Dictionary<string, bool>();
-			//for (int i = 0; i < split_plays.Count(); i++)
+			
+			this.cur_best_move = calculate_best_move(this.cur_board, 1, 3);
+			card_play best_move = this.cur_best_move;
+
+			set_action_text("Running best move");
+			if (this.debug == false)
 			{
-				//keep track of how many bg workers we've spawned
-				/*this.num_best_move_workers++;
-
-				bm_bgs.Add(new BackgroundWorker());
-				int cur_worker = i;
-				bm_bgs[cur_worker].DoWork += new DoWorkEventHandler(
-				delegate(object o, DoWorkEventArgs args)
-				{
-					//calculate the best move for this limited amount of possible plays
-					DateTime start_time = DateTime.Now;
-					card_play best_move = calculate_best_move(new board_state(this.cur_board), 1, 3, split_plays[cur_worker]);
-					TimeSpan run_time = DateTime.Now - start_time;
-					total_time += run_time.TotalMilliseconds;
-					counter++;
-					
-					args.Result = best_move;
-				});
-
-				set_action_text("Calculating best move\r\n" + this.num_best_move_workers + " threads active");
-
-				bm_bgs[cur_worker].RunWorkerCompleted += new RunWorkerCompletedEventHandler(
-				delegate(object o, RunWorkerCompletedEventArgs args)*/
-				{
-					//get the result from the DoWorkEvent
-					/*card_play calced_move = (card_play)args.Result;
-					
-					if (calced_move.score > this.cur_best_move.score)
-					{
-						this.cur_best_move = calced_move;
-					}
-
-					if (calced_move.score == this.cur_best_move.score && this.cur_best_move.moves[0].Length != 1)
-					{
-						if (this.rand.Next(0, 2) == 1 || this.cur_best_move.moves[0].Length == 0)
-						{
-							this.cur_best_move = calced_move;
-						}
-					}
-
-					//one worker less is active, make note of it
-					set_action_text("Calculating best move\r\n" + (this.num_best_move_workers - 1) + " threads active");*/
-
-					//if (this.num_best_move_workers <= 1)
-					{
-						//we've taken out the last bg worker, run the best move they all calculated
-
-						//play out the calculated best move
-						this.cur_best_move = calculate_best_move(this.cur_board, 1, 3);
-						card_play best_move = this.cur_best_move;
-
-						set_action_text("Running best move");
-						if (this.debug == false)
-						{
-							run_best_move(best_move);
-						}
-
-						try
-						{
-							Console.Write("Best move: ");
-							if (best_move.moves.Count() == 1)
-							{
-								if (this.cur_board.cards.ContainsKey(best_move.moves[0]))
-								{
-									Console.WriteLine(this.cur_board.cards[best_move.moves[0]].name);
-								}
-								else
-								{
-									Console.WriteLine(best_move.moves[0]);
-								}
-							}
-							else if (best_move.moves.Count() == 2)
-							{
-								Console.Write(this.cur_board.cards[best_move.moves[0]].name + " > ");
-								if (this.cur_board.cards.ContainsKey(best_move.moves[1]))
-								{
-									Console.WriteLine(this.cur_board.cards[best_move.moves[1]].name);
-								}
-								else
-								{
-									Console.WriteLine(best_move.moves[1]);
-								}
-							}
-							else if (best_move.moves.Count() == 3)
-							{
-								Console.Write(this.cur_board.cards[best_move.moves[0]].name + " > ");
-								Console.WriteLine(this.cur_board.cards[best_move.moves[1]].name);
-							}
-						}
-						catch (Exception e)
-						{
-							Console.WriteLine("Tried to write best move but couldn't (" + e.Message + ")");
-							for (int j = 0; j < 3; j++)
-							{
-								if (best_move.moves.Count() > j)
-								{
-									Console.WriteLine("Best move " + (j + 1) + ": " + best_move.moves[j]);
-								}
-							}
-						}
-						
-						//wait a short while for animation to play and interactivity to return
-						set_action_text("Waiting for animation");
-						int wait_time = this.rand.Next(1200, 1400);
-						if (best_move.moves.Count() == 1 || (best_move.moves.Count() == 2 && best_move.moves[1].All(char.IsDigit) && this.last_summoned_minion != best_move.moves[0]))
-						{
-							wait_time -= 800;
-						}
-
-						foreach (string card_id in this.cur_board.cards_minions)
-						{
-							card cur_card = this.cur_board.cards[card_id];
-							if (cur_card.name == "Lorewalker Cho" && ((best_move.moves.Count() == 2 && best_move.moves[1] == "spell") || (best_move.moves.Count() == 3 && best_move.moves[2] == "spell")))
-							{
-								set_action_text("Waiting for Cho's animation (fucker)");
-								wait_time += 3000;
-							}
-						}
-
-						Thread.Sleep(wait_time);
-					}
-
-					this.num_best_move_workers--;
-				}//);
-
-				//bm_bgs[cur_worker].RunWorkerAsync();
+				run_best_move(best_move);
 			}
+
+			try
+			{
+				Console.Write("Best move: ");
+				if (best_move.moves.Count() == 1)
+				{
+					if (this.cur_board.cards.ContainsKey(best_move.moves[0]))
+					{
+						Console.WriteLine(this.cur_board.cards[best_move.moves[0]].name);
+					}
+					else
+					{
+						Console.WriteLine(best_move.moves[0]);
+					}
+				}
+				else if (best_move.moves.Count() == 2)
+				{
+					Console.Write(this.cur_board.cards[best_move.moves[0]].name + " > ");
+					if (this.cur_board.cards.ContainsKey(best_move.moves[1]))
+					{
+						Console.WriteLine(this.cur_board.cards[best_move.moves[1]].name);
+					}
+					else
+					{
+						Console.WriteLine(best_move.moves[1]);
+					}
+				}
+				else if (best_move.moves.Count() == 3)
+				{
+					Console.Write(this.cur_board.cards[best_move.moves[0]].name + " > ");
+					Console.WriteLine(this.cur_board.cards[best_move.moves[1]].name);
+				}
+			}
+			catch (Exception e)
+			{
+				Console.WriteLine("Tried to write best move but couldn't (" + e.Message + ")");
+				for (int j = 0; j < 3; j++)
+				{
+					if (best_move.moves.Count() > j)
+					{
+						Console.WriteLine("Best move " + (j + 1) + ": " + best_move.moves[j]);
+					}
+				}
+			}
+						
+			//wait a short while for animation to play and interactivity to return
+			set_action_text("Waiting for animation");
+			int wait_time = this.rand.Next(1200, 1400);
+			if (best_move.moves.Count() == 1 || (best_move.moves.Count() == 2 && best_move.moves[1].All(char.IsDigit) && this.last_summoned_minion != best_move.moves[0]))
+			{
+				wait_time -= 800;
+			}
+
+			foreach (string card_id in this.cur_board.cards_minions)
+			{
+				card cur_card = this.cur_board.cards[card_id];
+				if (cur_card.name == "Lorewalker Cho" && ((best_move.moves.Count() == 2 && best_move.moves[1] == "spell") || (best_move.moves.Count() == 3 && best_move.moves[2] == "spell")))
+				{
+					set_action_text("Waiting for Cho's animation (fucker)");
+					wait_time += 3000;
+				}
+			}
+
+			Thread.Sleep(wait_time);
 		}
 
 		public void set_status_text(string text)
@@ -883,13 +821,13 @@ namespace Herby
 			if (possible_plays == null)
 			{
 				possible_plays = get_possible_plays(new board_state(board));
+
+				max_depth = (int)Math.Ceiling(Math.Log(200/possible_plays.Count(), 2));
 			}
 
 			//possible_plays = ShuffleList(possible_plays);
 			
 			card_play best_play = new card_play{moves = new List<string>{""}, score = -1000};
-
-			max_depth = (int)Math.Ceiling(Math.Log(300/possible_plays.Count(), 2));
 
 			//then for each possible play, see which yields the best board state
 			//recurse until max_depth has been reached
