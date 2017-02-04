@@ -451,6 +451,11 @@ namespace Herby
 
 		public bool check_if_weapon_in_play()
 		{
+			if (this.weapon_id == null)
+			{
+				return false;
+			}
+
 			card weapon_check = this.cards[this.weapon_id];
 			if (weapon_check.zone_name == "FRIENDLY PLAY (Weapon)")
 			{
