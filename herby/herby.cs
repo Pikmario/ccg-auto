@@ -141,7 +141,16 @@ namespace Herby
 		public Herby()
         {
 			string json = File.ReadAllText("herby.json");
-			Dictionary<string, dynamic> config = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(json);
+			Dictionary<string, dynamic> config = new Dictionary<string, dynamic>();
+			try
+			{
+				config = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(json);
+			}
+			catch (Exception e)
+			{
+				MessageBox.Show("JSON is bad:\r\n\r\n" + e.Message, "Herby Error");
+				System.Environment.Exit(0);
+			}
 			
 			get_config_settings(config);
 
@@ -423,6 +432,34 @@ namespace Herby
 					{
 						this.cur_board.wait_for_mulligan = false;
 						return;
+					}
+				}
+			}
+
+			//also throw away any 1 drops that wouldn't be played on turn 1
+			List<card_play> possible_plays = get_possible_plays(this.cur_board);
+
+			for (int i = 0; i < possible_plays.Count(); i++)
+			{
+				//simulate this play
+				List<board_state> simmed_boards = simulate_board_state(new board_state(this.cur_board), possible_plays[i]);
+
+				board_state simmed_board = simmed_boards[0];
+
+				//get this simulated play's score
+				double score_before = calculate_board_value(this.cur_board);
+				double score_after = calculate_board_value(simmed_board);
+				double total_score = score_after - score_before;
+
+				if (total_score < 0)
+				{
+					try
+					{
+						click_location(this.board_position_boxes["MULLIGAN"][mulligan_board][this.cur_board.cards[possible_plays[i].moves[0]].zone_position - 1], true, 250);
+					}
+					catch
+					{
+
 					}
 				}
 			}
