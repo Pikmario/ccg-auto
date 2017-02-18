@@ -82,8 +82,6 @@ namespace Herby
 		IntPtr hs;
 		public string my_name = "";
 
-		public string my_controller_value = "";
-
 		public const int move_delay_default = 200;
 
 		public static double MY_MINIONS_WEIGHT;
@@ -113,7 +111,7 @@ namespace Herby
 		public int num_wins = 0;
 		public int num_losses = 0;
 
-		public bool i_won = true;
+		public string winner = "";
 
 		public bool wipe_log = false;
 		string output_log = "";
@@ -137,6 +135,9 @@ namespace Herby
 
 		public List<Button> calced_move_buttons = new List<Button>();
 		int counter = 0;
+
+		public List<string> player_names = new List<string>();
+		public string player2_name = "";
 
 		public Herby()
         {
@@ -274,8 +275,8 @@ namespace Herby
 					return;
 				}
 			}
-
-			if (!this.cur_board.my_turn)
+			
+			if (this.cur_board.cur_active_player != this.cur_board.my_name)
 			{
 				//not currently my turn, don't bother calculating moves, the board is going to change before my turn
 				set_action_text("Waiting for my turn");
@@ -306,14 +307,9 @@ namespace Herby
 			}
 			
 			//calculate best move based on game state and stat weights
-			//first we get a list of all the possible plays for the initital game state
 			this.lethal_detected = false;
-			//List<card_play> possible_plays = get_possible_plays(new board_state(this.cur_board));
 			
-			//split these possible plays into a unique bg worker
-			//List<BackgroundWorker> bm_bgs = new List<BackgroundWorker>();
 			counter = 0;
-			//List<List<card_play>> split_plays = splitList(possible_plays, 3);
 			
 			this.hashes = new Dictionary<string, bool>();
 			
@@ -407,7 +403,7 @@ namespace Herby
 			}
 		}
 
-		void mulligan_card_step(bool wait = false)
+		void mulligan_card_step()
 		{
 			//but also we might not even be in the game yet
 			//wait a while seconds before doing anything
@@ -463,6 +459,36 @@ namespace Herby
 					}
 				}
 			}
+
+			//now get rid of 1 drops that can't be played (no targets)
+			foreach (string card_id in this.cur_board.cards_hand)
+			{
+				if (this.cur_board.cards[card_id].mana_cost == 1)
+				{
+					bool can_play = false;
+					for (int i = 0; i < possible_plays.Count(); i++)
+					{
+						if (possible_plays[i].moves[0] == card_id)
+						{
+							can_play = true;
+							break;
+						}
+					}
+
+					if (!can_play)
+					{
+						try
+						{
+							click_location(this.board_position_boxes["MULLIGAN"][mulligan_board][this.cur_board.cards[card_id].zone_position - 1], true, 250);
+						}
+						catch
+						{
+
+						}
+					}
+				}
+			}
+
 			//click confirm then wait 2 seconds
 			click_location(this.board_position_boxes["CONFIRM MULLIGAN"], true, 250);
 			Thread.Sleep(2000);
@@ -496,7 +522,6 @@ namespace Herby
 				}
 
 				StringBuilder modded_log_contents = new StringBuilder();
-				this.my_controller_value = "";
 				
 				board_state log_state = new board_state();
 
@@ -522,7 +547,7 @@ namespace Herby
 						//game is starting
 						log_state = new board_state();
 						log_state.game_active = true;
-						log_state.my_name = this.my_name;
+						//log_state.my_name = this.my_name;
 						continue;
 					}
 					
@@ -536,7 +561,7 @@ namespace Herby
 						}
 
 						log_state.game_active = false;
-						if (this.i_won)
+						if (this.cur_board.my_name == this.winner)
 						{
 							this.num_wins++;
 							this.num_wins_text.Text = num_wins.ToString();
@@ -643,12 +668,42 @@ namespace Herby
 							}
 						}
 
-						if (this.my_controller_value == "" && cur_tag == "CONTROLLER" && log_state.cards[cur_id].zone_name.Contains("FRIENDLY"))
-						{
-							this.my_controller_value = cur_value;
-						}
 						continue;
 					}
+
+					if (line.Contains("tag="))
+					{
+						if (line.Contains("PowerTaskList") && get_line_value(line, "tag") == "PLAYSTATE")
+						{
+							//keep track of the player names to figure out which player is which later
+							string player_name = get_line_value(line, "Entity");
+
+							if (this.player_names.Count() < 2)
+							{
+								//player 1 at [0], player 2 at [1]
+								this.player_names.Add(player_name);
+							}
+						}
+
+						if (get_line_value(line, "tag") == "NUM_CARDS_DRAWN_THIS_TURN" && log_state.my_name == "" && log_state.enemy_name == "")
+						{
+							//looking at the first instances of card draw this game
+							//keep track of which player is going second, by virtue of having drawn 4 cards to start
+							string player_name = get_line_value(line, "Entity");
+
+							if (!this.player_names.Contains(player_name))
+							{
+								//it's not either name, skip this line
+								continue;
+							}
+
+							if (get_line_value(line, "value") == "4")
+							{
+								player2_name = player_name;
+							}
+						}
+					}
+
 					if (line.Contains("DebugPrintPower") && line.Contains(" TAG_CHANGE"))
 					{
 						string card_id = get_line_value(line, "id");
@@ -694,14 +749,6 @@ namespace Herby
 						}
 
 						string player_name = get_line_value(line, "Entity");
-						if (log_state.my_name == "" && tag == "CONTROLLER" && tag_value == this.my_controller_value)
-						{
-							log_state.my_name = player_name;
-						}
-						else if (log_state.enemy_name == "" && tag == "CONTROLLER" && tag_value != this.my_controller_value)
-						{
-							log_state.enemy_name = player_name;
-						}
 
 						if (tag == "RESOURCES")
 						{
@@ -728,14 +775,20 @@ namespace Herby
 						}
 						else if (tag == "CURRENT_PLAYER")
 						{
-							if (player_name == log_state.my_name)
+							if (get_line_value(line, "value") == "1")
 							{
-								log_state.my_turn = get_line_value(line, "value") == "1";
+								log_state.cur_active_player = player_name;
 							}
 						}
 						else if (tag == "STEP")
 						{
-							log_state.game_state = get_line_value(line, "value");
+							string value = get_line_value(line, "value");
+							log_state.game_state = value;
+
+							if (value == "BEGIN_MULLIGAN" && log_state.count_cards_in_hand() > 0)
+							{
+								log_state.name_ready = true;
+							}
 						}
 						else if (tag == "MULLIGAN_STATE")
 						{
@@ -746,21 +799,9 @@ namespace Herby
 						}
 						else if (tag == "PLAYSTATE")
 						{
-							if (player_name == log_state.my_name)
+							if (get_line_value(line, "value") == "WON")
 							{
-								if (get_line_value(line, "value") == "LOST")
-								{
-									this.i_won = false;
-								}
-								else if (get_line_value(line, "value") == "WON")
-								{
-									this.i_won = true;
-								}
-								else
-								{
-									//assume i lost, it was probably a draw
-									this.i_won = false;
-								}
+								this.winner = player_name;
 							}
 						}
 						else if (tag == "HERO_ENTITY")
@@ -808,6 +849,34 @@ namespace Herby
 							log_state.hero_power_id = get_line_value(line, "id");
 						}
 					}
+
+					if (log_state.cur_mana == 1 && log_state.my_name == "" && log_state.enemy_name == "" && log_state.name_ready == true)
+					{
+						if (log_state.count_cards_in_hand() > 4)
+						{
+							log_state.my_name = player2_name;
+
+							foreach (string player_name in this.player_names)
+							{
+								if (player_name != log_state.my_name)
+								{
+									log_state.enemy_name = player_name;
+								}
+							}
+						}
+						else if (log_state.count_cards_in_hand() < 5)
+						{
+							log_state.enemy_name = player2_name;
+
+							foreach (string player_name in this.player_names)
+							{
+								if (player_name != log_state.enemy_name)
+								{
+									log_state.my_name = player_name;
+								}
+							}
+						}
+					}
 				}
 
 				if (this.wipe_log && this.cur_board.game_active == false)
@@ -816,6 +885,9 @@ namespace Herby
 					this.wipe_log = false;
 					log_state.my_name = "";
 					log_state.enemy_name = "";
+
+					this.player_names = new List<string>();
+					this.player2_name = "";
 				}
 
 				if (chk_view_log.Checked)
@@ -830,7 +902,7 @@ namespace Herby
 				}
 
 				this.cur_board = log_state;
-
+				
 				if (this.cur_board.game_active && this.db_path.Length > 0 && !File.Exists(this.db_path + "running"))
 				{
 					File.Create(this.db_path + "running");

@@ -9,7 +9,7 @@ namespace Herby
 	{
 		public Dictionary<string, card> cards = new Dictionary<string, card>();
 
-		public bool my_turn = false;
+		public string cur_active_player = "";
 		public int max_mana = 1;
 		public int cur_mana = 1;
 		public int mana_used = 0;
@@ -19,6 +19,7 @@ namespace Herby
 
 		public string my_name = "";
 		public string enemy_name = "";
+		public bool name_ready = false;
 
 		public string my_hero_id;
 		public string enemy_hero_id;
@@ -49,7 +50,7 @@ namespace Herby
 		public board_state(board_state cloned_board)
 		{
 			//pass in a board_state to a new object, and it will create a copy of it
-			this.my_turn = cloned_board.my_turn;
+			this.cur_active_player = cloned_board.cur_active_player;
 			this.max_mana = cloned_board.max_mana;
 			this.cur_mana = cloned_board.cur_mana;
 			this.mana_used = cloned_board.mana_used;
@@ -59,6 +60,7 @@ namespace Herby
 
 			this.my_name = cloned_board.my_name;
 			this.enemy_name = cloned_board.enemy_name;
+			this.name_ready = cloned_board.name_ready;
 
 			this.my_hero_id = cloned_board.my_hero_id;
 			this.enemy_hero_id = cloned_board.enemy_hero_id;
