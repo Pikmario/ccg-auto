@@ -154,6 +154,8 @@ namespace Herby
 		public List<string> player_names = new List<string>();
 		public string player2_name = "";
 
+		public bool dynamic_board_positions = true;
+
 		public Herby()
         {
 			string json = File.ReadAllText("herby.json");
@@ -184,6 +186,7 @@ namespace Herby
 
 			if (config.ContainsKey("positions"))
 			{
+				this.dynamic_board_positions = false;
 				init_board_positions(config["positions"]);
 			}
 			build_deck_options();
@@ -1781,7 +1784,10 @@ namespace Herby
 		{
 			this.hs = FindWindow(null, "Hearthstone");
 
-			init_board_positions();
+			if (this.dynamic_board_positions)
+			{
+				init_board_positions();
+			}
 
 			this.game_player.DoWork += new DoWorkEventHandler(
 			delegate(object o, DoWorkEventArgs args)
@@ -2082,6 +2088,12 @@ namespace Herby
 			int max_screen_width = 1920;
 			int max_screen_height = 1080;
 
+			if (screen_width == 0)
+			{
+				screen_width = max_screen_width;
+				screen_height = max_screen_height;
+			}
+
 			int x_offset = hs_dimensions.Left;
 			int y_offset = hs_dimensions.Top;
 
@@ -2217,11 +2229,6 @@ namespace Herby
 					}
 
 					this.board_position_boxes[key] = new board_position_box(left, right, top, bottom);
-
-					Console.WriteLine(key + ": " + left);
-					Console.WriteLine(key + ": " + right);
-					Console.WriteLine(key + ": " + top);
-					Console.WriteLine(key + ": " + bottom);
 				}
 				else
 				{
