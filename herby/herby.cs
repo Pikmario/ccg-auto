@@ -20,10 +20,25 @@ namespace Herby
 		[DllImport("user32.dll")]
 		private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
-		[DllImport("user32.dll", SetLastError = true)]
+		[DllImport("user32.dll")]
 		static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+		[DllImport("user32.dll")]
+		static extern bool SetForegroundWindow(IntPtr hWnd);
+		[DllImport("user32.dll")]
+		static extern IntPtr GetForegroundWindow();
+		[DllImport("user32.dll")]
+		static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
-		[DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = false)]
+		[StructLayout(LayoutKind.Sequential)]
+		public struct RECT
+		{
+			public int Left;
+			public int Top;
+			public int Right;
+			public int Bottom;
+		}
+
+		[DllImport("user32.dll")]
 		static extern IntPtr SendMessage(IntPtr hWnd, int Msg, int wParam, int lParam);
 
 		static int WM_LBUTTONDOWN = 0x201;	//Left mousebutton down
@@ -134,7 +149,7 @@ namespace Herby
 		bool debug = false;
 
 		public List<Button> calced_move_buttons = new List<Button>();
-		int counter = 0;
+		int move_counter = 0;
 
 		public List<string> player_names = new List<string>();
 		public string player2_name = "";
@@ -167,7 +182,10 @@ namespace Herby
 			RegisterHotKey(this.Handle, 0, (int)KeyModifier.Shift + (int)KeyModifier.Alt, Keys.Space.GetHashCode());
 			RegisterHotKey(this.Handle, 1, (int)KeyModifier.Shift + (int)KeyModifier.Ctrl, Keys.Space.GetHashCode());
 
-			init_board_positions(config["positions"]);
+			if (config.ContainsKey("positions"))
+			{
+				init_board_positions(config["positions"]);
+			}
 			build_deck_options();
 
 			this.cur_board = new board_state();
@@ -228,18 +246,6 @@ namespace Herby
 			build_game_state();
 		}
 
-		public static List<List<card_play>> splitList(List<card_play> locations, int nSize = 30)
-		{
-			List<List<card_play>> list = new List<List<card_play>>();
-
-			for (int i = 0; i < locations.Count(); i += nSize)
-			{
-				list.Add(locations.GetRange(i, Math.Min(nSize, locations.Count - i)));
-			}
-
-			return list;
-		}
-
 		void main_loop()
 		{
 			if (this.db_path.Length > 0 && File.Exists(this.db_path + "stop.flag") && !this.cur_board.game_active)
@@ -254,6 +260,7 @@ namespace Herby
 			if (!this.cur_board.game_active)
 			{
 				//game isn't active, just hammer the play button until a game starts
+				focus_game();
 				click_location(this.board_position_boxes["PLAY BUTTON"], true);
 				set_action_text("Waiting for game to start");
 				Thread.Sleep(3000);
@@ -300,7 +307,7 @@ namespace Herby
 			{
 				//we just played a card, or drew one, and the numbers don't match up
 				//wait a short while, then recalculate
-				set_action_text("Waiting for cards");
+				set_action_text("Waiting for card movement");
 				this.my_hand_size = this.cur_board.count_cards_in_hand();
 				Thread.Sleep(1000);
 				return;
@@ -309,7 +316,7 @@ namespace Herby
 			//calculate best move based on game state and stat weights
 			this.lethal_detected = false;
 			
-			counter = 0;
+			move_counter = 0;
 			
 			this.hashes = new Dictionary<string, bool>();
 			
@@ -403,6 +410,14 @@ namespace Herby
 			}
 		}
 
+		public void focus_game()
+		{
+			if (GetForegroundWindow() != this.hs)
+			{
+				SetForegroundWindow(this.hs);
+			}
+		}
+
 		void mulligan_card_step()
 		{
 			//but also we might not even be in the game yet
@@ -490,6 +505,7 @@ namespace Herby
 			}
 
 			//click confirm then wait 2 seconds
+			focus_game();
 			click_location(this.board_position_boxes["CONFIRM MULLIGAN"], true, 250);
 			Thread.Sleep(2000);
 		}
@@ -941,7 +957,7 @@ namespace Herby
 			//then for each possible play, see which yields the best board state
 			//recurse until max_depth has been reached
 
-			counter += possible_plays.Count;
+			move_counter += possible_plays.Count;
 			double score_before = calculate_board_value(board);
 			for (int i = 0; i < possible_plays.Count; i++)
 			{
@@ -956,7 +972,7 @@ namespace Herby
 						goto possible_plays_loop;
 					}
 
-					set_action_text("Calculating best move\r\n" + counter + " total moves found");
+					set_action_text("Calculating best move\r\n" + move_counter + " total moves found");
 					hashes[hashed_board_state] = true;
 					double score_after = calculate_board_value(simulated_board_state);
 					double board_score = score_after - score_before;
@@ -1213,10 +1229,13 @@ namespace Herby
 			}
 
 			//finally, end turn and hero power
-			card hero_power = board.cards[board.hero_power_id];
-			if (hero_power.mana_cost <= board.cur_mana && !hero_power.tags.exhausted && board.enemy_hero_id != null && board.cards[board.enemy_hero_id].tags.immune == false)
+			if (board.hero_power_id != null)
 			{
-				possible_plays.Add(new card_play { moves = new List<string> { board.hero_power_id } });
+				card hero_power = board.cards[board.hero_power_id];
+				if (hero_power.mana_cost <= board.cur_mana && !hero_power.tags.exhausted && board.enemy_hero_id != null && board.cards[board.enemy_hero_id].tags.immune == false)
+				{
+					possible_plays.Add(new card_play { moves = new List<string> { board.hero_power_id } });
+				}
 			}
 
 			possible_plays.Add(new card_play { moves = new List<string> { "END TURN" } });
@@ -1290,7 +1309,10 @@ namespace Herby
 				{
 					//NOTHIIIIIIING
 					//do something stupid that won't affect anything to make sure the hash for END TURN is different
-					simmed_board.cards[simmed_board.my_hero_id].tags.powered_up = true;
+					if (simmed_board.my_hero_id != null)
+					{
+						simmed_board.cards[simmed_board.my_hero_id].tags.powered_up = true;
+					}
 				}
 				else
 				{
@@ -1759,6 +1781,8 @@ namespace Herby
 		{
 			this.hs = FindWindow(null, "Hearthstone");
 
+			init_board_positions();
+
 			this.game_player.DoWork += new DoWorkEventHandler(
 			delegate(object o, DoWorkEventArgs args)
 			{
@@ -2046,6 +2070,182 @@ namespace Herby
 			SendMessage(hs, key, 0, 0);
 		}
 
+		void init_board_positions()
+		{
+			//figure out board positions dynamically
+			RECT hs_dimensions = new RECT();
+			GetWindowRect(this.hs, out hs_dimensions);
+
+			int screen_width = hs_dimensions.Right - hs_dimensions.Left;
+			int screen_height = hs_dimensions.Bottom - hs_dimensions.Top;
+
+			int max_screen_width = 1920;
+			int max_screen_height = 1080;
+
+			int x_offset = hs_dimensions.Left;
+			int y_offset = hs_dimensions.Top;
+
+			bool is_maximized = new Rectangle(hs_dimensions.Left, hs_dimensions.Top, screen_width, screen_height).Contains(Screen.PrimaryScreen.Bounds);
+
+			if (!is_maximized)
+			{
+				//add the window border pixels to the y offset
+				y_offset += 30;
+			}
+
+			Dictionary<string, dynamic> max_positions_dict = new Dictionary<string, dynamic>();
+			max_positions_dict = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(max_positions.get_max_positions());
+
+			//positions given are for a 1920x1080 display
+			//shrink them down to fit the dimensions in screen_width and screen_height
+			//height is consistent: ratio of distance from top vs bottom remains the same at all resolutions
+			//width is inconsistent: center X is kept consistent, whitespace is added to left and right to allow for widescreen
+			//new x_pos = (old x_pos - max_width / 2) * (screen_height / max_height) + (screen_width / 2)
+			float height_ratio = (float)(screen_height - (!is_maximized ? 38 : 0)) / max_screen_height;
+
+			this.board_position_boxes["FRIENDLY HAND"] = new board_position_box[11][];
+
+			this.board_position_boxes["FRIENDLY PLAY"] = new board_position_box[13];
+			this.board_position_boxes["OPPOSING PLAY"] = new board_position_box[13];
+			this.board_position_boxes["MULLIGAN"] = new board_position_box[2][];
+
+			foreach (var position in max_positions_dict)
+			{
+				string key = position.Key;
+				if (key == "FRIENDLY HAND")
+				{
+					foreach (var hand_position in position.Value)
+					{
+						int hand_size = Int32.Parse(hand_position.Name.Replace("hand_size_", ""));
+						this.board_position_boxes["FRIENDLY HAND"][hand_size] = new board_position_box[hand_size];
+
+						foreach (var hand_size_position in hand_position.Value)
+						{
+							int card_num = Int32.Parse(hand_size_position.Name.Replace("card_", ""));
+							int left = get_new_x_position((int)hand_size_position.Value["left"], max_screen_width, screen_width, height_ratio) + x_offset;
+							int right = get_new_x_position((int)hand_size_position.Value["right"], max_screen_width, screen_width, height_ratio) + x_offset;
+							int top = (int)Math.Ceiling((int)hand_size_position.Value["top"] * height_ratio) + y_offset;
+							int bottom = (int)Math.Ceiling((int)hand_size_position.Value["bottom"] * height_ratio) + y_offset;
+							this.board_position_boxes["FRIENDLY HAND"][hand_size][card_num] = new board_position_box(left, right, top, bottom);
+						}
+					}
+				}
+				else if (key == "FIELD")
+				{
+					int friendly_top = (int)Math.Ceiling((int)position.Value["FRIENDLY"]["top"] * height_ratio) + y_offset;
+					int friendly_bottom = (int)Math.Ceiling((int)position.Value["FRIENDLY"]["bottom"] * height_ratio) + y_offset;
+					int enemy_top = (int)Math.Ceiling((int)position.Value["OPPOSING"]["top"] * height_ratio) + y_offset;
+					int enemy_bottom = (int)Math.Ceiling((int)position.Value["OPPOSING"]["bottom"] * height_ratio) + y_offset;
+
+					int footprint = (int)Math.Ceiling((int)position.Value["minion_footprint"] * height_ratio);
+
+					int far_left = get_new_x_position((int)position.Value["far_left"]["left"], max_screen_width, screen_width, height_ratio) + x_offset;
+					int far_right = get_new_x_position((int)position.Value["far_left"]["right"], max_screen_width, screen_width, height_ratio) + x_offset;
+
+					for (int i = 0; i < 13; i++)
+					{
+						this.board_position_boxes["FRIENDLY PLAY"][i] = new board_position_box(far_left + footprint * i, far_right + footprint * i, friendly_top, friendly_bottom);
+						this.board_position_boxes["OPPOSING PLAY"][i] = new board_position_box(far_left + footprint * i, far_right + footprint * i, enemy_top, enemy_bottom);
+					}
+				}
+				else if (key == "MULLIGAN")
+				{
+					this.board_position_boxes["MULLIGAN"][0] = new board_position_box[3];
+					this.board_position_boxes["MULLIGAN"][1] = new board_position_box[4];
+
+					int card_num;
+
+					foreach (var going_first in position.Value["going_first"])
+					{
+						card_num = Int32.Parse(going_first.Name.Replace("card_", ""));
+						int left = get_new_x_position((int)going_first.Value["left"], max_screen_width, screen_width, height_ratio) + x_offset;
+						int right = get_new_x_position((int)going_first.Value["right"], max_screen_width, screen_width, height_ratio) + x_offset;
+						int top = (int)Math.Ceiling((int)going_first.Value["top"] * height_ratio) + y_offset;
+						int bottom = (int)Math.Ceiling((int)going_first.Value["bottom"] * height_ratio) + y_offset;
+						this.board_position_boxes["MULLIGAN"][0][card_num] = new board_position_box(left, right, top, bottom);
+					}
+
+					foreach (var going_second in position.Value["going_second"])
+					{
+						card_num = Int32.Parse(going_second.Name.Replace("card_", ""));
+						int left = get_new_x_position((int)going_second.Value["left"], max_screen_width, screen_width, height_ratio) + x_offset;
+						int right = get_new_x_position((int)going_second.Value["right"], max_screen_width, screen_width, height_ratio) + x_offset;
+						int top = (int)Math.Ceiling((int)going_second.Value["top"] * height_ratio) + y_offset;
+						int bottom = (int)Math.Ceiling((int)going_second.Value["bottom"] * height_ratio) + y_offset;
+						this.board_position_boxes["MULLIGAN"][1][card_num] = new board_position_box(left, right, top, bottom);
+					}
+				}
+				else if (key == "NEAR OPTIONS MENU" || key == "OPTIONS MENU")
+				{
+					//the options button acts like 0% of any other UI element, and both scales with screen size and positions itself near the right edge of the screen
+					//full size distance from edges: 4 from bottom, 12 from right
+					int max_button_width = 63;
+					int max_button_height = 35;
+					int max_distance_right = 12;
+					int max_distance_bottom = 6;
+
+					int new_button_width = (int)Math.Ceiling(max_button_width * height_ratio);
+					int new_button_height = (int)Math.Ceiling(max_button_height * height_ratio);
+					int new_distance_right = (int)Math.Ceiling(max_distance_right * height_ratio);
+					int new_distance_bottom = (int)Math.Ceiling(max_distance_bottom * height_ratio);
+
+					int left = 0, right = 0, top = 0, bottom = 0;
+
+					if (key == "OPTIONS MENU")
+					{
+						//need to somehow account for the x and y offsets mattering more
+						left = screen_width - new_distance_right - new_button_width + x_offset;
+						right = screen_width - new_distance_right + x_offset;
+						top = screen_height - new_distance_bottom - new_button_height + y_offset;
+						bottom = screen_height - new_distance_bottom + y_offset;
+					}
+					else if (key == "NEAR OPTIONS MENU")
+					{
+						left = screen_width - new_distance_right - new_button_width + x_offset;
+						right = screen_width - new_distance_right + x_offset;
+						top = screen_height - new_distance_bottom - new_button_height + y_offset - (new_button_height * 2);
+						bottom = screen_height - new_distance_bottom + y_offset - (new_button_height * 2);
+					}
+
+					if (!is_maximized)
+					{
+						//if we're not fullscreen, we need to remove the relevant borders, because those are accounted for in the screen width and height
+						left -= 8;
+						right -= 8;
+						top -= 38;
+						bottom -= 38;
+					}
+
+					this.board_position_boxes[key] = new board_position_box(left, right, top, bottom);
+
+					Console.WriteLine(key + ": " + left);
+					Console.WriteLine(key + ": " + right);
+					Console.WriteLine(key + ": " + top);
+					Console.WriteLine(key + ": " + bottom);
+				}
+				else
+				{
+					int left = get_new_x_position((int)position.Value["left"], max_screen_width, screen_width, height_ratio) + x_offset;
+					int right = get_new_x_position((int)position.Value["right"], max_screen_width, screen_width, height_ratio) + x_offset;
+					int top = (int)Math.Ceiling((int)position.Value["top"] * height_ratio) + y_offset;
+					int bottom = (int)Math.Ceiling((int)position.Value["bottom"] * height_ratio) + y_offset;
+
+					this.board_position_boxes[key] = new board_position_box(left, right, top, bottom);
+				}
+			}
+		}
+
+		public int get_new_x_position(int old_position, int old_width, int new_width, double height_ratio)
+		{
+			int old_distance_from_center = old_position - old_width / 2;
+
+			int new_distance_from_center = (int)Math.Ceiling(old_distance_from_center * height_ratio);
+
+			int new_position = new_distance_from_center + new_width / 2;
+
+			return new_position;
+		}
+
 		void init_board_positions(dynamic config_positions)
 		{
 			this.board_position_boxes["FRIENDLY HAND"] = new board_position_box[11][];
@@ -2127,7 +2327,7 @@ namespace Herby
 					int top = (int)position.Value["top"];
 					int bottom = (int)position.Value["bottom"];
 
-					this.board_position_boxes[position.Name] = new board_position_box(left, right, top, bottom);
+					this.board_position_boxes[key] = new board_position_box(left, right, top, bottom);
 				}
 			}
 		}
@@ -2136,7 +2336,7 @@ namespace Herby
 		{
 			this.log_location = config["general"]["log_location"].ToString();
 			this.db_path = config["general"]["dropbox_location"].ToString();
-			this.my_name = config["general"]["player_name"].ToString();
+			//this.my_name = config["general"]["player_name"].ToString();
 
 			dynamic weights = config["general"]["weights"];
 
