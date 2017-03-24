@@ -156,6 +156,8 @@ namespace Herby
 
 		public bool dynamic_board_positions = true;
 
+		public bool force_focus = false;
+
 		public Herby()
         {
 			string json = File.ReadAllText("herby.json");
@@ -381,7 +383,7 @@ namespace Herby
 			int wait_time = this.rand.Next(1200, 1400);
 			if (best_move.moves.Count() == 1 || (best_move.moves.Count() == 2 && best_move.moves[1].All(char.IsDigit) && this.last_summoned_minion != best_move.moves[0]))
 			{
-				wait_time -= 800;
+				wait_time -= 600;
 			}
 
 			foreach (string card_id in this.cur_board.cards_minions)
@@ -1352,7 +1354,6 @@ namespace Herby
 							herby_deck[simmed_board.cards[action.moves[0]].name].deathrattle(simmed_board.cards[action.moves[0]], simmed_boards);
 						}
 
-						//do the same thing for the minion i just traded with
 						if (simmed_board.my_hero_id == action.moves[0])
 						{
 							//my hero is attacking, lower the durability of his weapon
@@ -1465,6 +1466,13 @@ namespace Herby
 
 			if ((action.moves.Count() == 2 || action.moves.Count() == 3) && action.moves[1].All(char.IsDigit))
 			{
+				//remove enemy minions from play if the thing i did just killed them
+				if (simmed_board.cards[action.moves[1]].get_cur_health() <= 0)
+				{
+					simmed_board.remove_card_from_zone(action.moves[1]);
+				}
+
+				//check for enemy deathrattles
 				if (simmed_board.cards[action.moves[1]].get_cur_health() <= 0 && herby_deck.ContainsKey(simmed_board.cards[action.moves[1]].name) && herby_deck[simmed_board.cards[action.moves[1]].name].deathrattle != null && !simmed_board.cards[action.moves[1]].tags.silenced)
 				{
 					herby_deck[simmed_board.cards[action.moves[1]].name].deathrattle(simmed_board.cards[action.moves[1]], simmed_boards);
@@ -1549,7 +1557,7 @@ namespace Herby
 						cur_card_value += 1;
 					}
 				}
-				else if (cur_card.zone_name == "OPPOSING PLAY (Hero)")
+				else if (cur_card.zone_name == "OPPOSING PLAY (Hero)" || cur_card.local_id == board.enemy_hero_id)
 				{
 					if (cur_card.get_cur_health() > 0)
 					{
@@ -1885,7 +1893,7 @@ namespace Herby
 		void concede()
 		{
 			open_options_menu();
-			click_location(this.board_position_boxes["CONCEDE BUTTON"], true, 2000);
+			click_location(this.board_position_boxes["CONCEDE BUTTON"], true, 1000);
 		}
 
 		void quit_game()
@@ -1990,6 +1998,10 @@ namespace Herby
 
 		void click_location(int x, int y, bool drag = false, int movedelay = move_delay_default, int click_delay = 100)
 		{
+			if (this.force_focus)
+			{
+				focus_game();
+			}
 			move_cursor(x, y, drag, movedelay);
 			int split_delay = click_delay / 3;
 			Thread.Sleep(split_delay + this.rand.Next(-15, 15));
@@ -2344,6 +2356,11 @@ namespace Herby
 			this.log_location = config["general"]["log_location"].ToString();
 			this.db_path = config["general"]["dropbox_location"].ToString();
 			//this.my_name = config["general"]["player_name"].ToString();
+
+			if (config["general"]["force_focus"] != null)
+			{
+				this.force_focus = Convert.ToBoolean((int)config["general"]["force_focus"]);
+			}
 
 			dynamic weights = config["general"]["weights"];
 
