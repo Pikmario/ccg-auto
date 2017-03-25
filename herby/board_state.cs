@@ -183,6 +183,8 @@ namespace Herby
 					cards[id].tags.stealth = value;
 					break;
 				case "cant_be_targeted_by_abilities":
+				case "cant_be_targeted_by_spells":
+				case "cant_be_targeted_by_hero_powers":
 					cards[id].tags.cant_be_targeted_by_abilities = value;
 					break;
 				case "charge":
@@ -291,15 +293,6 @@ namespace Herby
 					if (herby_deck[this.cards[card_id].name].gain_aura != null)
 					{
 						herby_deck[this.cards[card_id].name].gain_aura(this.cards[card_id], this);
-					}
-				}
-
-				foreach (string board_card_id in this.cards_friendly_minions)
-				{
-					card cur_card = this.cards[board_card_id];
-					if (cur_card.local_id != card_id && cur_card.name != null && herby_deck.ContainsKey(cur_card.name) && herby_deck[cur_card.name].enter_aura != null)
-					{
-						herby_deck[cur_card.name].enter_aura(this.cards[card_id]);
 					}
 				}
 			}

@@ -546,6 +546,9 @@ namespace Herby
 				
 				board_state log_state = new board_state();
 
+				this.player_names = new List<string>();
+				this.player2_name = "";
+
 				while ((line = this.hs_log_file.ReadLine()) != null)
 				{
 					if (line.Trim() == "")
@@ -1130,7 +1133,7 @@ namespace Herby
 								foreach (string target_id in search_list)
 								{
 									card cur_target = board.cards[target_id];
-									if ((cur_target.tags.stealth == false || cur_target.zone_name.Contains("FRIENDLY"))&& cur_target.tags.cant_be_targeted_by_abilities == false)
+									if (((cur_target.tags.stealth == false && cur_target.tags.immune == false) || cur_target.zone_name.Contains("FRIENDLY"))&& cur_target.tags.cant_be_targeted_by_abilities == false)
 									{
 										possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, cur_target.local_id, "spell" } });
 									}

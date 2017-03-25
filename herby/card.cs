@@ -114,6 +114,10 @@ namespace Herby
 
 		public bool deal_damage(int damage)
 		{
+			if (this.tags.immune)
+			{
+				return false;
+			}
 			if (this.armor >= damage)
 			{
 				this.armor -= damage;
