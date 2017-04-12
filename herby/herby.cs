@@ -266,6 +266,7 @@ namespace Herby
 			{
 				//game isn't active, just hammer the play button until a game starts
 				focus_game();
+				click_location(this.board_position_boxes["NEAR OPTIONS MENU"], true);
 				click_location(this.board_position_boxes["PLAY BUTTON"], true);
 				set_action_text("Waiting for game to start");
 				Thread.Sleep(3000);
@@ -613,7 +614,7 @@ namespace Herby
 						continue;
 					}
 
-					if (line.Contains("goldRewardState = ALREADY_CAPPED") && this.running)
+					if (line.Contains("goldRewardState = ALREADY_CAPPED") && this.running && this.kill_wins_spinner.Value < 1)
 					{
 						//we hit the gold cap, wee
 						//quit the game, we've got nothing to gain by continuing
@@ -1220,13 +1221,23 @@ namespace Herby
 						{
 							//no taunts, target everything
 							//no don't target everything, this is way too fucking slow, and unnecessary (do me trade? NOPE)
-							//instead target everything in our high priority list or with a really high attack
+							//instead target everything in our high priority list or with a really high attack or that can kill our deathrattle minion
 							//also target everything if enemy has lethal
 							//but only target enemy face if i have lethal
 
 							if (my_atk < board.enemy_health)
 							{
-								if (cur_enemy.tags.stealth == false && cur_enemy.tags.immune == false && ((this.high_prio_targets.Contains(cur_enemy.name) && cur_enemy.tags.silenced == false) || cur_enemy.atk > 4 || total_atk >= board.my_health))
+								if
+								(
+								cur_enemy.tags.stealth == false
+								&& cur_enemy.tags.immune == false
+								&& (
+									(this.high_prio_targets.Contains(cur_enemy.name) && cur_enemy.tags.silenced == false)
+									|| cur_enemy.atk >= 4
+									|| (herby_deck.ContainsKey(cur_card.name) && cur_enemy.atk >= cur_card.get_cur_health() && herby_deck[cur_card.name].deathrattle != null)
+									|| total_atk >= board.my_health
+									)
+								)
 								{
 									possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, cur_enemy.local_id } });
 								}
