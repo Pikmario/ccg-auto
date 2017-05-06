@@ -19,7 +19,8 @@ namespace Herby
 						silenced,
 						battlecry,
 						cant_attack,
-						powered_up;
+						powered_up,
+						poisonous;
 
 			public card_tags(bool nothing = true)
 			{
@@ -36,6 +37,7 @@ namespace Herby
 				this.battlecry = false;
 				this.cant_attack = false;
 				this.powered_up = false;
+				this.poisonous = false;
 			}
 		}
 
@@ -112,7 +114,7 @@ namespace Herby
 			return false;
 		}
 
-		public bool deal_damage(int damage)
+		public bool deal_damage(int damage, bool is_poisonous = false)
 		{
 			if (this.tags.immune)
 			{
@@ -129,6 +131,11 @@ namespace Herby
 			{
 				this.tags.divine_shield = false;
 				return false;
+			}
+
+			if (this.card_type == "MINION" && is_poisonous)
+			{
+				return this.set_damage(this.get_cur_health());
 			}
 			
 			return this.set_damage(this.get_damage() + damage);
@@ -156,6 +163,7 @@ namespace Herby
 			this.tags.windfury = false;
 			this.tags.silenced = true;
 			this.tags.cant_attack = false;
+			this.tags.poisonous = false;
 
 			this.max_health = this.base_health;
 			this.atk = this.base_atk;

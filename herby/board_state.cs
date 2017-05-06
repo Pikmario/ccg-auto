@@ -219,6 +219,9 @@ namespace Herby
 				case "powered_up":
 					cards[id].tags.powered_up = value;
 					break;
+				case "poisonous":
+					cards[id].tags.poisonous = value;
+					break;
 				default:
 					return false;
 			}
@@ -352,12 +355,12 @@ namespace Herby
 
 		public void minion_trade(string attacker_id, string defender_id)
 		{
-			if (this.cards[defender_id].deal_damage(this.cards[attacker_id].atk + this.cards[attacker_id].temp_atk))
+			if (this.cards[defender_id].deal_damage(this.cards[attacker_id].atk + this.cards[attacker_id].temp_atk, this.cards[attacker_id].tags.poisonous))
 			{
 				this.remove_card_from_zone(defender_id);
 			}
 
-			if (this.cards[attacker_id].deal_damage(this.cards[defender_id].atk))
+			if (this.cards[attacker_id].deal_damage(this.cards[defender_id].atk, this.cards[defender_id].tags.poisonous))
 			{
 				this.remove_card_from_zone(attacker_id);
 			}
