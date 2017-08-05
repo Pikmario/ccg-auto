@@ -268,6 +268,7 @@ namespace Herby
 				focus_game();
 				click_location(this.board_position_boxes["NEAR OPTIONS MENU"], true);
 				click_location(this.board_position_boxes["PLAY BUTTON"], true);
+                click_location(this.board_position_boxes["PLAY BUTTON BRAWL"], true);
 				set_action_text("Waiting for game to start");
 				Thread.Sleep(3000);
 				return;
@@ -529,6 +530,8 @@ namespace Herby
 				bool updating_card = false;
 				string line = "";
 				string cur_id = "0";
+				string cur_option_id = "";
+				string cur_target_id = "";
 
 				this.hslog_filestream = new FileStream(
 					this.log_location,
@@ -875,6 +878,31 @@ namespace Herby
 						}
 					}
 
+					if (line.Contains("option") || line.Contains("target"))
+					{
+						if (line.Contains("option 0"))
+						{
+							//fresh list of options, wipe out the old list
+							log_state.possible_moves = new Dictionary<string, List<string>>();
+						}
+						if (line.Contains("option"))
+						{
+							cur_option_id = get_line_value(line, "id");
+							if (get_line_value(line, "error") == "NONE")
+							{
+								log_state.possible_moves[cur_option_id] = new List<string>();
+							}
+						}
+						else if (line.Contains("target"))
+						{
+							cur_target_id = get_line_value(line, "id");
+							if (get_line_value(line, "error") == "NONE")
+							{
+								log_state.possible_moves[cur_option_id].Add(cur_target_id);
+							}
+						}
+					}
+
 					if (log_state.cur_mana == 1 && log_state.my_name == "" && log_state.enemy_name == "" && log_state.name_ready == true)
 					{
 						if (log_state.count_cards_in_hand() > 4)
@@ -949,13 +977,13 @@ namespace Herby
 			}
 		}
 
-		card_play calculate_best_move(board_state board, int cur_depth = 1, int max_depth = 3, List<card_play> possible_plays = null)
+		card_play calculate_best_move(board_state board, int cur_depth = 1, int max_depth = 3)
 		{
 			//first get all possible plays for this board state
-			if (possible_plays == null)
+			List<card_play> possible_plays = get_possible_plays(new board_state(board));
+			
+			if (cur_depth == 1)
 			{
-				possible_plays = get_possible_plays(new board_state(board));
-
 				max_depth = (int)Math.Ceiling(Math.Log(200/possible_plays.Count(), 2));
 			}
 
@@ -1096,6 +1124,11 @@ namespace Herby
 								}
 							}
 						}
+                        else
+                        {
+                            //this card isn't defined, log it
+                            log_missing_card(cur_card.name);
+                        }
 					}
 				}
 				else if (cur_card.card_type == "ABILITY" || cur_card.card_type == "SPELL")
@@ -1254,6 +1287,53 @@ namespace Herby
 				if (hero_power.mana_cost <= board.cur_mana && !hero_power.tags.exhausted && board.enemy_hero_id != null && board.cards[board.enemy_hero_id].tags.immune == false)
 				{
 					possible_plays.Add(new card_play { moves = new List<string> { board.hero_power_id } });
+				}
+			}
+
+			//compare my list of possible plays with the game's list of allowable moves
+			if (board.possible_moves.Count > 0)
+			{
+				for (int i = 0 ; i < possible_plays.Count(); i++)
+				{
+					if (!board.possible_moves.ContainsKey(possible_plays[i].moves[0]))
+					{
+						//play isn't in list of allowed moves
+						possible_plays.RemoveAt(i--);
+						continue;
+					}
+
+					if (possible_plays[i].moves.Count() == 1)
+					{
+						//hero power
+					}
+					else if (possible_plays[i].moves.Count() == 2)
+					{
+						//minion trade, minion summon, or targetless spell
+						if (!board.cards.ContainsKey(possible_plays[i].moves[1]))
+						{
+							//target isn't a minion or hero, it's an untargeted spell or summoning a minion
+							//this was already handled above
+							continue;
+						}
+						else
+						{
+							//target is a minion or hero
+							if (!board.possible_moves[possible_plays[i].moves[0]].Contains(possible_plays[i].moves[1]))
+							{
+								//target isn't in list of allowed targets
+								possible_plays.RemoveAt(i--);
+							}
+						}
+					}
+					else if (possible_plays[i].moves.Count() == 3)
+					{
+						//targeted spell or battlecry
+						if (!board.possible_moves[possible_plays[i].moves[0]].Contains(possible_plays[i].moves[2]))
+						{
+							//target isn't in list of allowed targets
+							possible_plays.RemoveAt(i--);
+						}
+					}
 				}
 			}
 
@@ -1576,10 +1656,10 @@ namespace Herby
 					if (cur_card.get_cur_health() > 0)
 					{
 						cur_card_value += cur_card.get_cur_health() * ENEMY_HERO_WEIGHT * -1;
-						if (cur_card.get_cur_health() <= 8)
+						if (cur_card.get_cur_health() <= 5)
 						{
 							//enemy hero is getting low on health, rank him increasingly higher
-							cur_card_value += 300 / (Math.Max(1, cur_card.get_cur_health()));
+							cur_card_value += 100 / (Math.Max(1, cur_card.get_cur_health()));
 						}
 					}
 					else

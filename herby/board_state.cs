@@ -42,6 +42,8 @@ namespace Herby
 		public List<string> cards_opposing_minions = new List<string>();
 		public List<string> cards_secrets = new List<string>();
 
+		public Dictionary<string, List<string>> possible_moves = new Dictionary<string, List<string>>();
+
 		public board_state()
 		{
 

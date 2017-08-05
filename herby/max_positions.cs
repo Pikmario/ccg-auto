@@ -33,8 +33,14 @@
 		""left"":1350,
 		""right"":1460,
 		""top"":810,
-		""bottom"":930
+		""bottom"":880
 	},
+    ""PLAY BUTTON BRAWL"":{
+        ""left"":1140,
+		""right"":1240,
+		""top"":830,
+		""bottom"":980
+    },
 	""CONFIRM MULLIGAN"":{
 		""left"":900,
 		""right"":1030,
