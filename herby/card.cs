@@ -20,7 +20,8 @@ namespace Herby
 						battlecry,
 						cant_attack,
 						powered_up,
-						poisonous;
+						poisonous,
+						secret;
 
 			public card_tags(bool nothing = true)
 			{
@@ -38,6 +39,7 @@ namespace Herby
 				this.cant_attack = false;
 				this.powered_up = false;
 				this.poisonous = false;
+				this.secret = false;
 			}
 		}
 
@@ -62,6 +64,8 @@ namespace Herby
 		public string zone_name = "";
 		public string prev_zone_name = "";
 		public int zone_position;
+
+		public string classname = "";	//which class a secret belongs to
 
 		public card_tags tags;
 
@@ -98,6 +102,8 @@ namespace Herby
 			this.zone_name = cloned_card.zone_name;
 			this.prev_zone_name = cloned_card.prev_zone_name;
 			this.zone_position = cloned_card.zone_position;
+
+			this.classname = cloned_card.classname;
 
 			this.tags = cloned_card.tags;
 		}

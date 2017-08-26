@@ -41,6 +41,7 @@ namespace Herby
 		public List<string> cards_friendly_minions = new List<string>();
 		public List<string> cards_opposing_minions = new List<string>();
 		public List<string> cards_secrets = new List<string>();
+        public List<string> cards_enemy_secrets = new List<string>();
 
 		public Dictionary<string, List<string>> possible_moves = new Dictionary<string, List<string>>();
 
@@ -84,6 +85,7 @@ namespace Herby
 			this.cards_friendly_minions = new List<string>(cloned_board.cards_friendly_minions);
 			this.cards_opposing_minions = new List<string>(cloned_board.cards_opposing_minions);
 			this.cards_secrets = new List<string>(cloned_board.cards_secrets);
+            this.cards_enemy_secrets = new List<string>(cloned_board.cards_enemy_secrets);
 
 			foreach (KeyValuePair<string, card> entry in cloned_board.cards)
 			{
@@ -165,6 +167,9 @@ namespace Herby
 				case "zone_position":
 					cards[id].zone_position = Int32.Parse(prop_value);
 					break;
+				case "class":
+					cards[id].classname = prop_value;
+					break;
 				default:
 					return false;
 			}
@@ -193,7 +198,7 @@ namespace Herby
 					cards[id].tags.charge = value;
 					if (value)
 					{
-						cards[id].tags.exhausted = !value;
+						cards[id].tags.exhausted = false;
 					}
 					break;
 				case "exhausted":
@@ -223,6 +228,9 @@ namespace Herby
 					break;
 				case "poisonous":
 					cards[id].tags.poisonous = value;
+					break;
+				case "secret":
+					cards[id].tags.secret = value;
 					break;
 				default:
 					return false;
@@ -276,6 +284,10 @@ namespace Herby
 			{
 				this.cards_secrets.Add(card_id);
 			}
+            if (zone_name == "OPPOSING SECRET")
+            {
+                this.cards_enemy_secrets.Add(card_id);
+            }
 
 			this.cards_board = this.cards_board.Distinct().ToList();
 			this.cards_hand = this.cards_hand.Distinct().ToList();
@@ -285,6 +297,7 @@ namespace Herby
 			this.cards_friendly_minions = this.cards_friendly_minions.Distinct().ToList();
 			this.cards_opposing_minions = this.cards_opposing_minions.Distinct().ToList();
 			this.cards_secrets = this.cards_secrets.Distinct().ToList();
+            this.cards_enemy_secrets = this.cards_enemy_secrets.Distinct().ToList();
 			
 			if (zone_name.Contains("FRIENDLY PLAY"))
 			{
@@ -332,6 +345,7 @@ namespace Herby
 			this.cards_friendly_minions.Remove(card_id);
 			this.cards_opposing_minions.Remove(card_id);
 			this.cards_secrets.Remove(card_id);
+            this.cards_enemy_secrets.Remove(card_id);
 
 			/*
 			this is unnecessary to keep track of

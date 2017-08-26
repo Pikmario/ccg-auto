@@ -14,7 +14,7 @@ using Newtonsoft.Json;
 namespace Herby
 {
 	public partial class Herby : Form
-    {
+	{
 		[DllImport("user32.dll")]
 		private static extern bool RegisterHotKey(IntPtr hWnd, int id, int fsModifiers, int vk);
 		[DllImport("user32.dll")]
@@ -159,7 +159,7 @@ namespace Herby
 		public bool force_focus = false;
 
 		public Herby()
-        {
+		{
 			string json = File.ReadAllText("herby.json");
 			Dictionary<string, dynamic> config = new Dictionary<string, dynamic>();
 			try
@@ -181,7 +181,7 @@ namespace Herby
 
 			Control.CheckForIllegalCrossThreadCalls = false;
 
-            InitializeComponent();
+			InitializeComponent();
 
 			RegisterHotKey(this.Handle, 0, (int)KeyModifier.Shift + (int)KeyModifier.Alt, Keys.Space.GetHashCode());
 			RegisterHotKey(this.Handle, 1, (int)KeyModifier.Shift + (int)KeyModifier.Ctrl, Keys.Space.GetHashCode());
@@ -268,7 +268,7 @@ namespace Herby
 				focus_game();
 				click_location(this.board_position_boxes["NEAR OPTIONS MENU"], true);
 				click_location(this.board_position_boxes["PLAY BUTTON"], true);
-                click_location(this.board_position_boxes["PLAY BUTTON BRAWL"], true);
+				click_location(this.board_position_boxes["PLAY BUTTON BRAWL"], true);
 				set_action_text("Waiting for game to start");
 				Thread.Sleep(3000);
 				return;
@@ -617,7 +617,7 @@ namespace Herby
 						continue;
 					}
 
-					if (line.Contains("goldRewardState = ALREADY_CAPPED") && this.running && this.kill_wins_spinner.Value < 1)
+					if (line.Contains("goldRewardState = ALREADY_CAPPED") && this.running && this.kill_wins_spinner.Value == 0)
 					{
 						//we hit the gold cap, wee
 						//quit the game, we've got nothing to gain by continuing
@@ -1124,72 +1124,69 @@ namespace Herby
 								}
 							}
 						}
-                        else
-                        {
-                            //this card isn't defined, log it
-                            log_missing_card(cur_card.name);
-                        }
+						else
+						{
+							//this card isn't defined, log it
+							log_missing_card(cur_card.name);
+						}
 					}
 				}
 				else if (cur_card.card_type == "ABILITY" || cur_card.card_type == "SPELL")
 				{
-					//spell or secret, make sure we have it defined
+					//spell, make sure we have it defined
 					if (herby_deck.ContainsKey(cur_card.name))
 					{
-						if (herby_deck[cur_card.name].type == "spell")
+						//card is a spell, figure out where to throw it
+						if (herby_deck[cur_card.name].target != "none")
 						{
-							//card is a spell, figure out where to throw it
-							if (herby_deck[cur_card.name].target != "none")
+							//spell has an explicit target, figure out who
+							List<string> search_list = new List<string>();
+							switch (herby_deck[cur_card.name].target)
 							{
-								//spell has an explicit target, figure out who
-								List<string> search_list = new List<string>();
-								switch (herby_deck[cur_card.name].target)
-								{
-									case "minion":
-										search_list = board.cards_minions;
-										break;
-									case "enemy":
-										search_list = board.cards_opposing;
-										break;
-									case "enemy_minion":
-										search_list = board.cards_opposing_minions;
-										break;
-									case "friendly":
-										search_list = board.cards_friendly;
-										break;
-									case "friendly_minion":
-										search_list = board.cards_friendly_minions;
-										break;
-									default:
-										break;
-								}
-
-								foreach (string target_id in search_list)
-								{
-									card cur_target = board.cards[target_id];
-									if (((cur_target.tags.stealth == false && cur_target.tags.immune == false) || cur_target.zone_name.Contains("FRIENDLY"))&& cur_target.tags.cant_be_targeted_by_abilities == false)
-									{
-										possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, cur_target.local_id, "spell" } });
-									}
-								}
-							}
-							else
-							{
-								//spell has no target, either does a random target, goes for face, or summons something
-								possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, "spell" } });
-							}
-						}
-						else if (herby_deck[cur_card.name].type == "secret")
-						{
-							//playing a secret, make sure no other secrets of the same type already exist
-							if (board.check_if_secret_in_play(cur_card.name) == true || board.cards_secrets.Count() >= 5)
-							{
-								//this secret is already in play or we're full on secrets, can't use it
-								continue;
+								case "minion":
+									search_list = board.cards_minions;
+									break;
+								case "enemy":
+									search_list = board.cards_opposing;
+									break;
+								case "enemy_minion":
+									search_list = board.cards_opposing_minions;
+									break;
+								case "friendly":
+									search_list = board.cards_friendly;
+									break;
+								case "friendly_minion":
+									search_list = board.cards_friendly_minions;
+									break;
+								default:
+									break;
 							}
 
-							possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, "secret" } });
+							foreach (string target_id in search_list)
+							{
+								card cur_target = board.cards[target_id];
+								if (((cur_target.tags.stealth == false && cur_target.tags.immune == false) || cur_target.zone_name.Contains("FRIENDLY"))&& cur_target.tags.cant_be_targeted_by_abilities == false)
+								{
+									possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, cur_target.local_id, "spell" } });
+								}
+							}
 						}
+						else
+						{
+							//spell has no target, either does a random target, goes for face, or summons something
+							possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, "spell" } });
+						}
+					}
+					else if (cur_card.tags.secret)
+					{
+						//card is a secret, mark it as playable if another one of the same name isn't in play
+						if (board.check_if_secret_in_play(cur_card.name) == true || board.cards_secrets.Count() >= 5)
+						{
+							//this secret is already in play or we're full on secrets, can't use it
+							continue;
+						}
+
+						possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, "secret" } });
 					}
 					else
 					{
@@ -1328,7 +1325,7 @@ namespace Herby
 					else if (possible_plays[i].moves.Count() == 3)
 					{
 						//targeted spell or battlecry
-						if (!board.possible_moves[possible_plays[i].moves[0]].Contains(possible_plays[i].moves[2]))
+						if (!board.possible_moves[possible_plays[i].moves[0]].Contains(possible_plays[i].moves[1]))
 						{
 							//target isn't in list of allowed targets
 							possible_plays.RemoveAt(i--);
@@ -1602,7 +1599,7 @@ namespace Herby
 					continue;
 				}
 				
-				if ((cur_card.zone_name.Contains("PLAY") || cur_card.zone_name.Contains("HAND")) && !cur_card.zone_name.Contains("(Hero)"))
+				if ((cur_card.zone_name.Contains("PLAY") || cur_card.zone_name.Contains("HAND") || cur_card.zone_name.Contains("SECRET")) && !cur_card.zone_name.Contains("(Hero)"))
 				{
 					cur_card_value += ((cur_card.atk * ATK_WEIGHT) + cur_card.get_cur_health());
 					if (cur_card.tags.taunt)
@@ -1648,7 +1645,7 @@ namespace Herby
 					}
 					else if (cur_card.zone_name == "FRIENDLY SECRET")
 					{
-						cur_card_value += 1;
+						cur_card_value += ENEMY_HERO_WEIGHT * 2 + 1;
 					}
 				}
 				else if (cur_card.zone_name == "OPPOSING PLAY (Hero)" || cur_card.local_id == board.enemy_hero_id)
@@ -1659,13 +1656,27 @@ namespace Herby
 						if (cur_card.get_cur_health() <= 5)
 						{
 							//enemy hero is getting low on health, rank him increasingly higher
-							cur_card_value += 100 / (Math.Max(1, cur_card.get_cur_health()));
+							cur_card_value += 100 / (Math.Max(.1, cur_card.get_cur_health()));
 						}
 					}
 					else
 					{
 						//enemy hero is dead in this board state. rank this super high
-						cur_card_value += 9999;
+						//but only if they don't have a secret in play (might be ice block)
+						bool mage_secret = false;
+						foreach (string secret_id in cur_board.cards_enemy_secrets)
+						{
+							card secret = cur_board.cards[secret_id];
+							if (secret.classname == "MAGE")
+							{
+								mage_secret = true;
+							}
+						}
+
+						if (!mage_secret)
+						{
+							cur_card_value += 9999;
+						}
 					}
 				}
 				else if (cur_card.zone_name == "FRIENDLY PLAY (Hero)")
@@ -2638,5 +2649,5 @@ namespace Herby
 
 			return randomList; //return the new random list
 		}
-    }
+	}
 }
