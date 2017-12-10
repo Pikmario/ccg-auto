@@ -87,8 +87,6 @@ namespace Herby
 			this.cards_secrets = new List<string>(cloned_board.cards_secrets);
             this.cards_enemy_secrets = new List<string>(cloned_board.cards_enemy_secrets);
 
-			this.legal_moves = new Dictionary<string, List<string>>(cloned_board.legal_moves);
-
 			foreach (KeyValuePair<string, card> entry in cloned_board.cards)
 			{
 				this.cards[entry.Key] = new card(entry.Value);

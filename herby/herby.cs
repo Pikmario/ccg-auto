@@ -980,7 +980,16 @@ namespace Herby
 		card_play calculate_best_move(board_state board, int cur_depth = 1, int max_depth = 3)
 		{
 			//first get all possible plays for this board state
-			List<card_play> possible_plays = get_possible_plays(new board_state(board));
+			board_state plays_board_state;
+			if (cur_depth == 1)
+			{
+				plays_board_state = board;
+			}
+			else
+			{
+				plays_board_state = new board_state(board);
+			}
+			List<card_play> possible_plays = get_possible_plays(plays_board_state);
 			
 			if (cur_depth == 1)
 			{
