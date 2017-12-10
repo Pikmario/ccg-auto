@@ -21,7 +21,8 @@ namespace Herby
 						cant_attack,
 						powered_up,
 						poisonous,
-						secret;
+						secret,
+						untouchable;
 
 			public card_tags(bool nothing = true)
 			{
@@ -40,6 +41,7 @@ namespace Herby
 				this.powered_up = false;
 				this.poisonous = false;
 				this.secret = false;
+				this.untouchable = false;
 			}
 		}
 

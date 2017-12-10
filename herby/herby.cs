@@ -411,9 +411,9 @@ namespace Herby
 
 		public void set_action_text(string text)
 		{
-			if (action.Text != text)
+			//if (action_display.Text != text)
 			{
-				action.Text = text;
+				action_display.Text = text;
 			}
 		}
 
@@ -883,14 +883,14 @@ namespace Herby
 						if (line.Contains("option 0"))
 						{
 							//fresh list of options, wipe out the old list
-							log_state.possible_moves = new Dictionary<string, List<string>>();
+							log_state.legal_moves = new Dictionary<string, List<string>>();
 						}
 						if (line.Contains("option"))
 						{
 							cur_option_id = get_line_value(line, "id");
 							if (get_line_value(line, "error") == "NONE")
 							{
-								log_state.possible_moves[cur_option_id] = new List<string>();
+								log_state.legal_moves[cur_option_id] = new List<string>();
 							}
 						}
 						else if (line.Contains("target"))
@@ -898,7 +898,7 @@ namespace Herby
 							cur_target_id = get_line_value(line, "id");
 							if (get_line_value(line, "error") == "NONE")
 							{
-								log_state.possible_moves[cur_option_id].Add(cur_target_id);
+								log_state.legal_moves[cur_option_id].Add(cur_target_id);
 							}
 						}
 					}
@@ -1009,7 +1009,19 @@ namespace Herby
 						goto possible_plays_loop;
 					}
 
-					set_action_text("Calculating best move\r\n" + move_counter + " total moves found");
+					double move_counter_display;
+
+					if (move_counter > 100)
+					{
+						move_counter_display = Math.Round(move_counter / 100d) * 100;
+					}
+					else
+					{
+						move_counter_display = move_counter;
+					}
+
+					set_action_text("Calculating best move\r\n" + move_counter_display + " total moves found");
+					
 					hashes[hashed_board_state] = true;
 					double score_after = calculate_board_value(simulated_board_state);
 					double board_score = score_after - score_before;
@@ -1288,11 +1300,11 @@ namespace Herby
 			}
 
 			//compare my list of possible plays with the game's list of allowable moves
-			if (board.possible_moves.Count > 0)
+			if (board.legal_moves.Count > 0)
 			{
 				for (int i = 0 ; i < possible_plays.Count(); i++)
 				{
-					if (!board.possible_moves.ContainsKey(possible_plays[i].moves[0]))
+					if (!board.legal_moves.ContainsKey(possible_plays[i].moves[0]))
 					{
 						//play isn't in list of allowed moves
 						possible_plays.RemoveAt(i--);
@@ -1315,7 +1327,7 @@ namespace Herby
 						else
 						{
 							//target is a minion or hero
-							if (!board.possible_moves[possible_plays[i].moves[0]].Contains(possible_plays[i].moves[1]))
+							if (!board.legal_moves[possible_plays[i].moves[0]].Contains(possible_plays[i].moves[1]))
 							{
 								//target isn't in list of allowed targets
 								possible_plays.RemoveAt(i--);
@@ -1325,7 +1337,7 @@ namespace Herby
 					else if (possible_plays[i].moves.Count() == 3)
 					{
 						//targeted spell or battlecry
-						if (!board.possible_moves[possible_plays[i].moves[0]].Contains(possible_plays[i].moves[1]))
+						if (!board.legal_moves[possible_plays[i].moves[0]].Contains(possible_plays[i].moves[1]))
 						{
 							//target isn't in list of allowed targets
 							possible_plays.RemoveAt(i--);
@@ -1677,6 +1689,10 @@ namespace Herby
 						{
 							cur_card_value += 9999;
 						}
+						else
+						{
+							cur_card_value += 1000;
+						}
 					}
 				}
 				else if (cur_card.zone_name == "FRIENDLY PLAY (Hero)")
@@ -1883,7 +1899,7 @@ namespace Herby
 		{
 			string[] attr_array;
 			string attr_string;
-			attr_array = line.Split(new string[] { "name=" }, 0);
+			attr_array = line.Split(new string[] { "entityName=" }, 0);
 			if (attr_array.Length == 1)
 			{
 				return "";

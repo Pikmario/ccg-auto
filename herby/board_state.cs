@@ -43,7 +43,7 @@ namespace Herby
 		public List<string> cards_secrets = new List<string>();
         public List<string> cards_enemy_secrets = new List<string>();
 
-		public Dictionary<string, List<string>> possible_moves = new Dictionary<string, List<string>>();
+		public Dictionary<string, List<string>> legal_moves = new Dictionary<string, List<string>>();
 
 		public board_state()
 		{
@@ -86,6 +86,8 @@ namespace Herby
 			this.cards_opposing_minions = new List<string>(cloned_board.cards_opposing_minions);
 			this.cards_secrets = new List<string>(cloned_board.cards_secrets);
             this.cards_enemy_secrets = new List<string>(cloned_board.cards_enemy_secrets);
+
+			this.legal_moves = new Dictionary<string, List<string>>(cloned_board.legal_moves);
 
 			foreach (KeyValuePair<string, card> entry in cloned_board.cards)
 			{
@@ -232,6 +234,9 @@ namespace Herby
 				case "secret":
 					cards[id].tags.secret = value;
 					break;
+				case "untouchable":
+					cards[id].tags.untouchable = value;
+					break;
 				default:
 					return false;
 			}
@@ -326,7 +331,7 @@ namespace Herby
 					Dictionary<string, deck_card> herby_deck = build_herby_deck.herby_deck();
 					if (herby_deck.ContainsKey(this.cards[card_id].name))
 					{
-						if (herby_deck[this.cards[card_id].name].lose_aura != null)
+						if (herby_deck[this.cards[card_id].name].lose_aura != null && this.cards[card_id].tags.silenced == false)
 						{
 							herby_deck[this.cards[card_id].name].lose_aura(this.cards[card_id], this);
 						}
@@ -495,7 +500,7 @@ namespace Herby
 				{
 					cur_atk *= 2;
 				}
-				if (cur_card.tags.frozen || (cur_card.tags.exhausted && !enemy_field))
+				if (cur_card.tags.frozen || (cur_card.tags.exhausted && !enemy_field) || cur_card.tags.untouchable)
 				{
 					cur_atk *= 0;
 				}
