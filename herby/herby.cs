@@ -1252,7 +1252,7 @@ namespace Herby
 					//this is our minion, and it can attack
 					//now loop through all the enemy minions, and the enemy hero
 					//first, the enemy hero
-					if (!enemy_has_taunt && board.cards[board.enemy_hero_id].tags.immune == false)
+					if (!enemy_has_taunt && board.cards[board.enemy_hero_id].tags.immune == false && !(cur_card.tags.rush == true && cur_card.tags.just_played == true))
 					{
 						possible_plays.Add(new card_play { moves = new List<string> { cur_card.local_id, board.enemy_hero_id } });
 					}
@@ -1497,7 +1497,7 @@ namespace Herby
 					{
 						//summoning a simple minion
 						simmed_board.add_card_to_zone(action.moves[0], "FRIENDLY PLAY");
-						if (simmed_board.cards[action.moves[0]].tags.charge == false)
+						if (simmed_board.cards[action.moves[0]].tags.charge == false && simmed_board.cards[action.moves[0]].tags.rush == false)
 						{
 							simmed_board.cards[action.moves[0]].tags.exhausted = true;
 						}
@@ -1524,6 +1524,8 @@ namespace Herby
 							simmed_board.add_card(echo_card.local_id, echo_card);
 							simmed_board.add_card_to_zone(echo_card.local_id, "FRIENDLY HAND");
 						}
+
+						simmed_board.cards[action.moves[0]].tags.just_played = true;
 					}
 					else if (action.moves[1] == "spell")
 					{
@@ -1563,7 +1565,7 @@ namespace Herby
 				{
 					//summoning a minion
 					simmed_board.add_card_to_zone(action.moves[0], "FRIENDLY PLAY");
-					if (simmed_board.cards[action.moves[0]].tags.charge == false)
+					if (simmed_board.cards[action.moves[0]].tags.charge == false && simmed_board.cards[action.moves[0]].tags.rush == false)
 					{
 						simmed_board.cards[action.moves[0]].tags.exhausted = true;
 					}
@@ -1571,8 +1573,10 @@ namespace Herby
 					{
 						simmed_board.cards[action.moves[0]].tags.exhausted = false;
 					}
-					
+
 					herby_deck[simmed_board.cards[action.moves[0]].name].battlecry(simmed_board.cards[action.moves[0]], simmed_boards, simmed_board.cards[action.moves[1]]);
+
+					simmed_board.cards[action.moves[0]].tags.just_played = true;
 				}
 				else if (action.moves[2] == "spell")
 				{

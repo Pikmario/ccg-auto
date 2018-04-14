@@ -25,7 +25,8 @@ namespace Herby
 						untouchable,
 						echo,
 						lifesteal,
-						rush;
+						rush,
+						just_played;
 
 			public card_tags(bool nothing = true)
 			{
@@ -48,6 +49,7 @@ namespace Herby
 				this.echo = false;
 				this.lifesteal = false;
 				this.rush = false;
+				this.just_played = false;
 			}
 		}
 

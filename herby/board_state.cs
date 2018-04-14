@@ -243,6 +243,13 @@ namespace Herby
 					break;
 				case "rush":
 					cards[id].tags.rush = value;
+					if (value)
+					{
+						cards[id].tags.exhausted = false;
+					}
+					break;
+				case "just_played":
+					cards[id].tags.just_played = value;
 					break;
 				default:
 					return false;
@@ -313,7 +320,7 @@ namespace Herby
 			
 			if (zone_name.Contains("FRIENDLY PLAY"))
 			{
-				if (this.cards[card_id].tags.charge == false && !zone_name.Contains("Hero"))
+				if (this.cards[card_id].tags.charge == false && this.cards[card_id].tags.rush == false && !zone_name.Contains("Hero"))
 				{
 					this.cards[card_id].tags.exhausted = true;
 				}
