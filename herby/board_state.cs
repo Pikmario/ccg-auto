@@ -235,6 +235,15 @@ namespace Herby
 				case "untouchable":
 					cards[id].tags.untouchable = value;
 					break;
+				case "echo":
+					cards[id].tags.echo = value;
+					break;
+				case "lifesteal":
+					cards[id].tags.lifesteal = value;
+					break;
+				case "rush":
+					cards[id].tags.rush = value;
+					break;
 				default:
 					return false;
 			}
@@ -374,6 +383,18 @@ namespace Herby
 
 		public void minion_trade(string attacker_id, string defender_id)
 		{
+			if (this.cards[attacker_id].tags.lifesteal == true && this.cards[defender_id].tags.divine_shield == false)
+			{
+				//attacking with a lifesteal minion into something without divine shield, heal me
+				this.cards[my_hero_id].heal_damage(this.cards[attacker_id].atk);
+			}
+
+			if (this.cards[defender_id].tags.lifesteal == true && this.cards[attacker_id].tags.divine_shield == false)
+			{
+				//attacking a lifesteal minion with something that doesn't have divine shield, heal the enemy hero
+				this.cards[enemy_hero_id].heal_damage(this.cards[defender_id].atk);
+			}
+
 			if (this.cards[defender_id].deal_damage(this.cards[attacker_id].atk + this.cards[attacker_id].temp_atk, this.cards[attacker_id].tags.poisonous))
 			{
 				this.remove_card_from_zone(defender_id);

@@ -112,6 +112,7 @@ namespace Herby
 		public static double STEALTH_WEIGHT;
 		public static double STEALTH_WEIGHT_ABS;
 		public static double DIVINE_SHIELD_WEIGHT;
+		public static double LIFESTEAL_WEIGHT;
 		public static double HIGH_PRIO_WEIGHT;
 
 		public Random rand = new Random();
@@ -440,7 +441,7 @@ namespace Herby
 			{
 				//find all cards in hand with a mana cost above 4 or below 1, toss them
 				card cur_card = this.cur_board.cards[card_id];
-				if (cur_card.name != "The Coin" && (cur_card.mana_cost > 4 || cur_card.mana_cost < 1))
+				if (cur_card.name != "The Coin" && (cur_card.mana_cost > 4 || cur_card.mana_cost < 1) && cur_card.name != "Corridor Creeper" && cur_card.name != "Lesser Emerald Spellstone")
 				{
 					try
 					{
@@ -649,7 +650,7 @@ namespace Herby
 						}
 						continue;
 					}
-					if (line.Contains("SHOW_ENTITY - Updating") || line.Contains("FULL_ENTITY - Updating"))
+					if (line.Contains("SHOW_ENTITY - Updating") || line.Contains("FULL_ENTITY - Updating") || line.Contains("CHANGE_ENTITY"))
 					{
 						//updating a card that was previously created without knowing what it was
 						//for cards that fell into the deck or brand new created cards
@@ -1065,7 +1066,7 @@ namespace Herby
 						best_play = possible_plays[i];
 					}
 				}
-				if (best_play.score > 5000)
+				if (best_play.score > 8000)
 				{
 					//i have lethal, don't bother calculating any other options
 					this.lethal_detected = true;
@@ -1513,6 +1514,16 @@ namespace Herby
 								herby_deck[simmed_board.cards[action.moves[0]].name].battlecry(simmed_board.cards[action.moves[0]], simmed_boards, new card());
 							}
 						}
+
+						if (simmed_board.cards[action.moves[0]].tags.echo == true)
+						{
+							//echo card, put a copy of this card into the hand
+							card echo_card = new card(simmed_board.cards[action.moves[0]]);
+							
+							echo_card.local_id = "ECHO_" + echo_card.local_id;
+							simmed_board.add_card(echo_card.local_id, echo_card);
+							simmed_board.add_card_to_zone(echo_card.local_id, "FRIENDLY HAND");
+						}
 					}
 					else if (action.moves[1] == "spell")
 					{
@@ -1644,6 +1655,10 @@ namespace Herby
 					{
 						cur_card_value *= DIVINE_SHIELD_WEIGHT;
 					}
+					if (cur_card.tags.lifesteal)
+					{
+						cur_card_value *= LIFESTEAL_WEIGHT;
+					}
 					if (cur_card.zone_name == "FRIENDLY PLAY" && cur_card.card_type == "MINION")
 					{
 						cur_card_value *= MY_MINIONS_WEIGHT;
@@ -1683,18 +1698,8 @@ namespace Herby
 					else
 					{
 						//enemy hero is dead in this board state. rank this super high
-						//but only if they don't have a secret in play (might be ice block)
-						bool mage_secret = false;
-						foreach (string secret_id in cur_board.cards_enemy_secrets)
-						{
-							card secret = cur_board.cards[secret_id];
-							if (secret.classname == "MAGE")
-							{
-								mage_secret = true;
-							}
-						}
-
-						if (!mage_secret)
+						//but only if they don't have a secret in play (might be ice block, get down, etc)
+						if (cur_board.cards_enemy_secrets.Count() == 0)
 						{
 							cur_card_value += 9999;
 						}
@@ -1704,9 +1709,14 @@ namespace Herby
 						}
 					}
 				}
-				else if (cur_card.zone_name == "FRIENDLY PLAY (Hero)")
+				else if (cur_card.zone_name == "FRIENDLY PLAY (Hero)" || cur_card.local_id == board.my_hero_id)
 				{
-					if (this.cur_board.check_attack_on_board(true) >= cur_card.get_cur_health() && !board.check_if_taunt_in_play())
+					if (cur_card.get_cur_health() <= 0)
+					{
+						//i'm dead in this scenario. mark this super low
+						cur_card_value -= 9999;
+					}
+					else if (this.cur_board.check_attack_on_board(true) >= cur_card.get_cur_health() && !board.check_if_taunt_in_play() && board.cards_secrets.Count() == 0)
 					{
 						//enemy has lethal, mark this kinda low
 						cur_card_value -= 100;
@@ -1714,11 +1724,6 @@ namespace Herby
 					else if (cur_card.get_cur_health() > 0)
 					{
 						cur_card_value += cur_card.get_cur_health() * MY_HERO_WEIGHT;
-					}
-					else
-					{
-						//i'm dead in this scenario. mark this super low
-						cur_card_value -= 9999;
 					}
 				}
 
@@ -1780,7 +1785,7 @@ namespace Herby
 						int total_atk = 0;
 						total_atk = this.cur_board.check_attack_on_board(true);
 						
-						if (total_atk >= this.cur_board.my_health && !this.cur_board.check_if_taunt_in_play() && this.cur_board.enemy_health > 0)
+						if (total_atk >= this.cur_board.my_health && !this.cur_board.check_if_taunt_in_play() && this.cur_board.enemy_health > 0 && this.cur_board.cards_secrets.Count() == 0)
 						{
 							//enemy has more damage than i have health, and i have no taunts. I CHOOSE DEATH
 							concede();
@@ -2507,6 +2512,7 @@ namespace Herby
 			STEALTH_WEIGHT = (double)weights["STEALTH_WEIGHT"];
 			STEALTH_WEIGHT_ABS = (double)weights["STEALTH_WEIGHT_ABS"];
 			DIVINE_SHIELD_WEIGHT = (double)weights["DIVINE_SHIELD_WEIGHT"];
+			LIFESTEAL_WEIGHT = (double)weights["LIFESTEAL_WEIGHT"];
 			HIGH_PRIO_WEIGHT = (double)weights["HIGH_PRIO_WEIGHT"];
 
 			this.high_prio_targets = config["general"]["high_prio_targets"].ToObject<List<string>>();

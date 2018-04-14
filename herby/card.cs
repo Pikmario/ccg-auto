@@ -22,7 +22,10 @@ namespace Herby
 						powered_up,
 						poisonous,
 						secret,
-						untouchable;
+						untouchable,
+						echo,
+						lifesteal,
+						rush;
 
 			public card_tags(bool nothing = true)
 			{
@@ -42,6 +45,9 @@ namespace Herby
 				this.poisonous = false;
 				this.secret = false;
 				this.untouchable = false;
+				this.echo = false;
+				this.lifesteal = false;
+				this.rush = false;
 			}
 		}
 
@@ -119,6 +125,10 @@ namespace Herby
 				this.damage = this.max_health;
 				return true;
 			}
+			else if (this.damage < 0)
+			{
+				this.damage = 0;
+			}
 			return false;
 		}
 
@@ -147,6 +157,11 @@ namespace Herby
 			}
 			
 			return this.set_damage(this.get_damage() + damage);
+		}
+
+		public void heal_damage(int healing)
+		{
+			this.set_damage(this.get_damage() - healing);
 		}
 
 		public int get_damage()
