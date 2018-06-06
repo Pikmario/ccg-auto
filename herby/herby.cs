@@ -714,7 +714,7 @@ namespace Herby
 							}
 						}
 
-						if (get_line_value(line, "tag") == "NUM_CARDS_DRAWN_THIS_TURN" && log_state.my_name == "" && log_state.enemy_name == "")
+						if ((get_line_value(line, "tag") == "NUM_CARDS_DRAWN_THIS_TURN" || get_line_value(line, "tag") == "467") && log_state.my_name == "" && log_state.enemy_name == "")
 						{
 							//looking at the first instances of card draw this game
 							//keep track of which player is going second, by virtue of having drawn 4 cards to start
