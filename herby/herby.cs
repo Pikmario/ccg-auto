@@ -553,7 +553,7 @@ namespace Herby
 
 				this.player_names = new List<string>();
 				this.player2_name = "";
-
+				
 				while ((line = this.hs_log_file.ReadLine()) != null)
 				{
 					if (line.Trim() == "")
@@ -587,6 +587,7 @@ namespace Herby
 						{
 							//actual game isn't currently active, wipe out the log file
 							this.wipe_log = true;
+							continue;
 						}
 
 						log_state.game_active = false;
@@ -732,7 +733,7 @@ namespace Herby
 							}
 						}
 					}
-
+					
 					if (line.Contains("DebugPrintPower") && line.Contains(" TAG_CHANGE"))
 					{
 						string card_id = get_line_value(line, "id");
@@ -745,6 +746,12 @@ namespace Herby
 						{
 							//can't find a card in this tag_change line, skip it
 							continue;
+						}
+
+						if (int.TryParse(card_id, out int n) && !log_state.cards.ContainsKey(card_id))
+						{
+							//this card wasn't defined yet, create a stub for it
+							log_state.add_card(card_id);
 						}
 					
 						//get the tag the line is editing and its value
@@ -776,7 +783,7 @@ namespace Herby
 								log_state.change_card_tag(card_id, tag, tag_value == "1");
 							}
 						}
-
+						
 						string player_name = get_line_value(line, "Entity");
 
 						if (tag == "RESOURCES")
@@ -878,7 +885,7 @@ namespace Herby
 							log_state.hero_power_id = get_line_value(line, "id");
 						}
 					}
-
+					
 					if (line.Contains("option") || line.Contains("target"))
 					{
 						if (line.Contains("option 0"))
@@ -903,7 +910,7 @@ namespace Herby
 							}
 						}
 					}
-
+					
 					if (log_state.cur_mana == 1 && log_state.my_name == "" && log_state.enemy_name == "" && log_state.name_ready == true)
 					{
 						if (log_state.count_cards_in_hand() > 4)
@@ -954,7 +961,7 @@ namespace Herby
 						log_output.ScrollToCaret();
 					}
 				}
-
+				
 				this.cur_board = log_state;
 				
 				if (this.cur_board.game_active && this.db_path.Length > 0 && !File.Exists(this.db_path + "running"))
@@ -973,7 +980,7 @@ namespace Herby
 			}
 			catch (Exception e)
 			{
-				Console.WriteLine(e.Message);
+				Console.WriteLine(e.ToString());
 				return;
 			}
 		}
